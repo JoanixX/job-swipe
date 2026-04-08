@@ -1,0 +1,176 @@
+#==========================================================
+#                           BACKEND
+#==========================================================
+__pycache__/
+*.pyc
+venv/
+.env
+
+#==========================================================
+#                           FRONTEND
+#==========================================================
+# Entornos y dependencias
+venv/
+node_modules/
+
+# Builds y generados
+dist/
+client/dist/
+client/public/
+*.log
+
+# Variables de entorno
+.env
+.env.local
+
+# Archivos de respaldo/basura
+*.backup
+*.trash
+
+# Locks (opcional, según tu flujo)
+# package-lock.json
+# client/package-lock.json
+
+node_modules
+node_modules
+__pycache__/
+*.pyc
+venv/
+.env
+
+# dependencias
+node_modules/
+client/node_modules/
+*/node_modules/
+
+# build y cache
+dist/
+build/
+.next/
+.nuxt/
+.vuepress/dist
+.serverless/
+.fusebox/
+.dynamodb/
+
+# dev
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# logs y temps
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# ides
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# sistema operativo
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# archivos de backup
+*.backup
+*.bak
+*.tmp
+*.temp
+
+# documentacion temporal
+d_*.txt
+temp_*.md
+draft_*.md
+
+# archivos de configuracion duplicados
+client/next.config.js
+client/next-env.d.ts
+client/tailwind.config.js
+client/postcss.config.js
+client/tsconfig.json
+
+#==========================================================
+#                           IA
+#==========================================================
+venv/
+__pycache__/
+.env
+.pyc
+.pyo
+__pycache__
+
+#==========================================================
+#                          CHATBOT
+#==========================================================
+# Archivos de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pkl
+*.log
+
+# Entornos virtuales
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Configuración de dependencias locales
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Archivos de Jupyter
+.ipynb_checkpoints
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de configuración local
+*.local
+*.cache
+
+# Archivos de compilación
+build/
+dist/
+*.egg-info/
+
+# PDF temporales o generados
+*.pdf
+
+# Excepciones: mantener los PDFs necesarios
+!info_chamby.pdf
+!business.pdf
+
+# Archivos de IDEs
+.vscode/
+.idea/
+*.swp
