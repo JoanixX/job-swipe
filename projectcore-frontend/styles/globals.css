@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #000;
+  color: #fff;
+}
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 2, 2, 10;
+  --background-end-rgb: 8, 8, 25;
+  --accent-purple: 106, 0, 244;
+  --accent-pink: 255, 28, 247;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--background-start-rgb)),
+    rgb(var(--background-end-rgb))
+  );
+  font-family: 'Space Grotesk', sans-serif;
+  overflow-x: hidden;
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, rgba(var(--accent-pink), 1) 0%, rgba(var(--accent-purple), 1) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 30px rgba(var(--accent-pink), 0.3);
+}
+
+.gradient-border {
+  background: linear-gradient(90deg, rgba(var(--accent-pink), 1) 0%, rgba(var(--accent-purple), 1) 100%);
+  padding: 1px;
+  border-radius: 0.5rem;
+  box-shadow: 0 0 20px rgba(var(--accent-purple), 0.2);
+}
+
+.gradient-border > * {
+  background: rgb(var(--background-start-rgb));
+  border-radius: 0.5rem;
+}
+
+.stars {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.star {
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+  animation: twinkle var(--duration) ease-in-out infinite;
+  opacity: 0;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+.rocket-flame {
+  position: absolute;
+  bottom: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 60px;
+  filter: blur(8px);
+  animation: flicker 0.2s infinite;
+  box-shadow: 0 0 40px rgba(255, 100, 50, 0.6);
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 0.8; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+.parallax-section {
+  position: relative;
+  overflow: hidden;
+  will-change: transform;
+}
+
+.tech-grid {
+  background-image: 
+    linear-gradient(to right, rgba(var(--accent-purple), 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(var(--accent-purple), 0.1) 1px, transparent 1px),
+    radial-gradient(circle at center, rgba(var(--accent-purple), 0.15) 0%, transparent 70%);
+  background-size: 50px 50px, 50px 50px, 100% 100%;
+  background-position: 0 0;
+  animation: gridMove 20s linear infinite;
+}
+
+@keyframes gridMove {
+  0% { background-position: 0 0, 0 0, center center; }
+  100% { background-position: 50px 50px, 50px 50px, center center; }
+}
+
+.glow-effect {
+  position: relative;
+  background: linear-gradient(90deg, rgba(var(--accent-purple), 0.8), rgba(var(--accent-pink), 0.8));
+  overflow: hidden;
+}
+
+.glow-effect::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(90deg, rgba(var(--accent-pink), 1), rgba(var(--accent-purple), 1));
+  filter: blur(15px);
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.3s ease;
+}
+
+.glow-effect:hover::before {
+  opacity: 0.6;
+}
+
+.connection-lines {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(circle at 20% 20%, rgba(var(--accent-purple), 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(var(--accent-pink), 0.1) 0%, transparent 50%);
+  opacity: 0.5;
+  pointer-events: none;
+} 

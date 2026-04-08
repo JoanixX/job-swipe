@@ -1,0 +1,6 @@
+
+.cardFancy {
+  composes: bg-white rounded-xl overflow-hidden shadow-lg transition-all duration-300 from global;
+  position: relative;
+  z-index: 1;
+}
