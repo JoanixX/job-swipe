@@ -1,0 +1,74 @@
+# Todas las librerias que se deben importar
+import re
+import pandas as pd
+import numpy as np
+import spacy
+from spacy.lang.es.stop_words import STOP_WORDS as spacy_stopwords
+from sklearn.feature_extraction.text import TfidfVectorizer
+from scipy.sparse import hstack
+from sentence_transformers import SentenceTransformer
+
+class Preprocesador:
+    def __init__(self):
+        self.modelo_embedding = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+        self.nlp = spacy.load("es_core_news_sm")
+
+    def crear_perfil_textual(self, text):
+        text = re.sub(r"[^\w\s]", " ", text.lower())
+        text = re.sub(r"\s+", " ", text).strip()
+        doc = self.nlp(text)
+        tokens = []
+        for token in doc:
+            if token.is_stop or token.is_punct or token.like_num:
+                continue
+            else:
+                tokens.append(token.lemma_)
+        return " ".join(tokens)
+
+    def crear_perfil_textual_estudiante(self, estudiante):
+        return self.crear_perfil_textual(
+            ("career: " + str(estudiante['career']) + " ") * 1 +
+            ("skills: " + str(estudiante['skills']) + " ") * 3 +
+            ("interests: " + str(estudiante['interests']) + " ") * 3 +
+            ("description: " + str(estudiante['description']) + " ") * 3 +
+            ("experience: " + str(estudiante['experience_details']) + " ") * 5
+        )
+
+    def crear_perfil_textual_puesto(self, puesto):
+        return self.crear_perfil_textual(
+            ("title: " + str(puesto['title']) + " ") * 1 +
+            ("description: " + str(puesto['description']) + " ") * 3 +
+            ("area: " + str(puesto['areas']) + " ") * 8 +
+            ("required_skills: " + str(puesto['required_skills'])) * 10
+        )
+
+    # Embeddings para todos los puestos
+    def get_embeddings_alloffers(self, job_offers_data):
+        puestos = pd.DataFrame(job_offers_data)
+        puestos['perfil_textual'] = puestos.apply(self.crear_perfil_textual_puesto, axis=1)
+        corpus = puestos['perfil_textual'].tolist()
+        embeddings = self.modelo_embedding.encode(corpus, convert_to_numpy=True, show_progress_bar=True)
+        return embeddings
+
+    # Embeddings para todos los estudiantes
+    def get_embeddings_allstudents(self, students_data):
+        estudiantes = pd.DataFrame(students_data)
+        estudiantes = estudiantes.copy()
+        estudiantes['perfil_textual'] = estudiantes.apply(self.crear_perfil_textual_estudiante, axis=1)
+        corpus = estudiantes['perfil_textual'].tolist()
+        embeddings = self.modelo_embedding.encode(corpus, convert_to_numpy=True, show_progress_bar=True)
+        return embeddings
+    
+    # Embedding para un estudiante
+    def get_embedding_student(self, student_data):
+        estudiante = pd.DataFrame(student_data)
+        text = self.crear_perfil_textual_estudiante(estudiante.iloc[0])
+        embedding = self.modelo_embedding.encode([text], convert_to_numpy=True)
+        return embedding
+    
+    # Embedding para un puesto
+    def get_embedding_offer(self, job_offer_data):
+        puestos = pd.DataFrame(job_offer_data)
+        text = self.crear_perfil_textual_puesto(puestos.iloc[0])
+        embedding = self.modelo_embedding.encode([text], convert_to_numpy=True)
+        return embedding

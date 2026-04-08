@@ -1,0 +1,12 @@
+numpy
+pandas
+requests
+scikit-learn
+nltk
+spacy
+ipykernel
+fastapi
+uvicorn
+email-validator
+sentence_transformers
+python-dotenv
