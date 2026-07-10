@@ -57,7 +57,7 @@ class StudentRepositoryImpl(StudentRepository):
                     AppUserModel.related_id == s.id
                 )
             )
-            app_user = app_user_result.scalar_one_or_none()
+            app_user = app_user_result.scalars().first()
             description = app_user.description if app_user else None
 
             enriched_students.append({

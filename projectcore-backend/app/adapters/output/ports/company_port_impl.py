@@ -25,6 +25,10 @@ class CompanyPortImpl(CompanyPort):
             name=company_data['name'],
             industry=company_data['industry'],
             company_culture=company_data['company_culture'],
+            contact_email=company_data.get('contact_email'),
+            phone=company_data.get('phone'),
+            website=company_data.get('website'),
+            location=company_data.get('location'),
             created_at=company_data['created_at'],
             updated_at=company_data['updated_at'],
             deleted_at=company_data.get('deleted_at')
@@ -53,6 +57,10 @@ class CompanyPortImpl(CompanyPort):
             name=company_data.get('name', existing_company.name),
             industry=company_data.get('industry', existing_company.industry),
             company_culture=company_data.get('company_culture', existing_company.company_culture),
+            contact_email=company_data.get('contact_email', existing_company.contact_email),
+            phone=company_data.get('phone', existing_company.phone),
+            website=company_data.get('website', existing_company.website),
+            location=company_data.get('location', existing_company.location),
             created_at=company_data['created_at'],
             updated_at=company_data['updated_at'],
             deleted_at=company_data.get('deleted_at', existing_company.deleted_at)

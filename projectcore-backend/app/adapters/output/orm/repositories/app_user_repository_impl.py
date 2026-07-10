@@ -24,6 +24,9 @@ class AppUserRepositoryImpl(AppUserRepository):
                 date_of_birth=row.date_of_birth,
                 main_motivation=row.main_motivation,
                 description=row.description,
+                phone=row.phone,
+                linkedin=row.linkedin,
+                portfolio=row.portfolio,
                 password_hash=row.password_hash,
                 role=role_value,
                 related_id=row.related_id,
@@ -44,6 +47,9 @@ class AppUserRepositoryImpl(AppUserRepository):
             date_of_birth=user.date_of_birth,
             main_motivation=user.main_motivation,
             description=user.description,
+            phone=user.phone,
+            linkedin=user.linkedin,
+            portfolio=user.portfolio,
             password_hash=user.password_hash,
             role=user.role.value if isinstance(user.role, UserRole) else user.role,
             related_id=user.related_id
@@ -63,6 +69,9 @@ class AppUserRepositoryImpl(AppUserRepository):
             date_of_birth=model.date_of_birth,
             main_motivation=model.main_motivation,
             description=model.description,
+            phone=model.phone,
+            linkedin=model.linkedin,
+            portfolio=model.portfolio,
             password_hash=model.password_hash,
             role=role_value,
             related_id=model.related_id,
@@ -70,3 +79,77 @@ class AppUserRepositoryImpl(AppUserRepository):
             updated_at=model.updated_at,
             deleted_at=model.deleted_at
         )
+
+    async def get_by_id(self, user_id: int) -> AppUser | None:
+        result = await self.session.execute(select(AppUserModel).where(AppUserModel.id == user_id))
+        row = result.scalar_one_or_none()
+        if row:
+            role_value = row.role.value if isinstance(row.role, UserRole) else row.role
+            return AppUser(
+                id=row.id,
+                email=row.email,
+                dni=row.dni,
+                cv_url=row.cv_url,
+                name=row.name,
+                location=row.location,
+                ruc=row.ruc,
+                date_of_birth=row.date_of_birth,
+                main_motivation=row.main_motivation,
+                description=row.description,
+                phone=row.phone,
+                linkedin=row.linkedin,
+                portfolio=row.portfolio,
+                password_hash=row.password_hash,
+                role=role_value,
+                related_id=row.related_id,
+                created_at=row.created_at,
+                updated_at=row.updated_at,
+                deleted_at=row.deleted_at
+            )
+        return None
+
+    async def update(self, user_id: int, updates: dict) -> AppUser | None:
+        result = await self.session.execute(select(AppUserModel).where(AppUserModel.id == user_id))
+        model = result.scalar_one_or_none()
+        if not model:
+            return None
+            
+        for key, value in updates.items():
+            if hasattr(model, key):
+                setattr(model, key, value)
+                
+        await self.session.commit()
+        await self.session.refresh(model)
+        
+        role_value = model.role.value if isinstance(model.role, UserRole) else model.role
+        return AppUser(
+            id=model.id,
+            email=model.email,
+            dni=model.dni,
+            cv_url=model.cv_url,
+            name=model.name,
+            location=model.location,
+            ruc=model.ruc,
+            date_of_birth=model.date_of_birth,
+            main_motivation=model.main_motivation,
+            description=model.description,
+            phone=model.phone,
+            linkedin=model.linkedin,
+            portfolio=model.portfolio,
+            password_hash=model.password_hash,
+            role=role_value,
+            related_id=model.related_id,
+            created_at=model.created_at,
+            updated_at=model.updated_at,
+            deleted_at=model.deleted_at
+        )
+
+    async def delete(self, user_id: int) -> bool:
+        result = await self.session.execute(select(AppUserModel).where(AppUserModel.id == user_id))
+        model = result.scalar_one_or_none()
+        if not model:
+            return False
+            
+        await self.session.delete(model)
+        await self.session.commit()
+        return True

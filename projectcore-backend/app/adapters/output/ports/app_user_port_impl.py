@@ -37,3 +37,12 @@ class AppUserPortImpl(AppUserPort):
         )
         saved_app_user = await self.app_user_repo.save(app_user)
         return saved_app_user
+
+    async def get_by_id(self, user_id: int) -> Optional[AppUser]:
+        return await self.app_user_repo.get_by_id(user_id)
+
+    async def update(self, user_id: int, updates: dict) -> Optional[AppUser]:
+        return await self.app_user_repo.update(user_id, updates)
+
+    async def delete(self, user_id: int) -> bool:
+        return await self.app_user_repo.delete(user_id)

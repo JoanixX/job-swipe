@@ -3,7 +3,7 @@ from datetime import date, datetime
 class JobOffer:
     def __init__(self, id: int, company_id: int, title: str, description: str,
                  required_hours: int, approximated_salary: int, duration: int,
-                 start_date: date, modality: int, embedding: dict = None,
+                 start_date: date, modality: int, location: str = None, embedding: dict = None,
                  created_at: datetime = None, updated_at: datetime = None, 
                  deleted_at: datetime = None):
         self.id = id
@@ -15,6 +15,7 @@ class JobOffer:
         self.duration = duration
         self.start_date = start_date
         self.modality = modality
+        self.location = location
         self.embedding = embedding
         self.created_at = created_at
         self.updated_at = updated_at

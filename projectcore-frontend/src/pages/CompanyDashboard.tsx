@@ -1,1256 +1,1469 @@
 import React, { useState, useEffect } from 'react'
+import { useLocation } from 'wouter'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { 
   Building2, 
   Users, 
   Briefcase, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Star,
-  Sparkles, 
-  MapPin, 
-  Clock, 
-  DollarSign,
-  TrendingUp,
-  Eye,
-  Calendar,
-  Award,
-  Target,
-  Zap,
-  Brain,
-  Radar,
-  Home,
-  Settings,
+  TrendingUp, 
+  Eye, 
+  LayoutDashboard,
   LogOut,
-  Menu,
-  X
+  CheckCircle2,
+  ChevronRight,
+  Plus,
+  Star,
+  Mail,
+  Calendar,
+  Lock,
+  Trash2,
+  Download,
+  Edit2,
+  X,
+  ChevronLeft,
+  Save,
+  XCircle
 } from 'lucide-react'
+import { API_BASE_URL } from '@/services/backend-api'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useUser } from '@/lib/user-context'
-import { jobOfferAPI, aiMatchingAPI, catalogAPI, type JobOfferCreate, type JobOfferResponse } from '@/services/backend-api'
 
-function CompanyDashboard() {
-  const { user } = useUser()
-  const [activeTab, setActiveTab] = useState('overview')
-  const [companyJobOffers, setCompanyJobOffers] = useState<JobOfferResponse[]>([])
-  const [selectedJobOffer, setSelectedJobOffer] = useState<JobOfferResponse | null>(null)
-  const [matchedStudents, setMatchedStudents] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [showCreateJob, setShowCreateJob] = useState(false)
-  const [showJobOfferForm, setShowJobOfferForm] = useState(false)
-  const [editingJob, setEditingJob] = useState<JobOfferResponse | null>(null)
-  const [editingJobOffer, setEditingJobOffer] = useState<JobOfferResponse | null>(null)
-  const [areas, setAreas] = useState<any[]>([])
-  const [experienceLevels, setExperienceLevels] = useState<any[]>([])
-  const [skills, setSkills] = useState<any[]>([])
-  const [loadingMatches, setLoadingMatches] = useState(false)
-  const [profile, setProfile] = useState<any>(null)
-  const [editingProfile, setEditingProfile] = useState<any>(null)
-  const [jobFormData, setJobFormData] = useState({
+export default function CompanyDashboard() {
+  const { user, setUser } = useUser()
+  const [, setLocation] = useLocation()
+  const [activeView, setActiveView] = useState('dashboard')
+  
+  // Post Offer State
+  const [postStep, setPostStep] = useState(1)
+  const [offerData, setOfferData] = useState({
     title: '',
+    location: '',
+    modality: 'Híbrido',
+    salary: '',
     description: '',
-    required_hours: 40,
-    approximated_salary: 0,
-    duration: 6,
-    start_date: '',
-    area_id: 1,
-    experience_id: 1,
-    modality: 1
+    skills: '',
+    requirements: '',
+    benefits: ''
   })
-  const [companyData, setCompanyData] = useState<any>({
-    id: 1,
-    name: 'TechCorp Solutions',
-    description: 'Empresa líder en desarrollo de software',
-    industry: 'Tecnología',
-    location: 'Lima, Perú'
+  const [currentSkill, setCurrentSkill] = useState('')
+  
+  // Company Profile State
+  const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [companyProfile, setCompanyProfile] = useState({
+    name: 'TechCorp SAC',
+    ruc: '20123456789',
+    email: 'reclutamiento@techcorp.com',
+    phone: '+51 999 111 222',
+    website: 'techcorp.com',
+    address: 'Av. Principal 123, San Isidro, Lima'
   })
-  const [isMobile, setIsMobile] = useState(false)
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
-  // AI Analytics state
-  const [aiAnalytics, setAiAnalytics] = useState({
-    talentPoolSize: 1247,
-    matchAccuracy: 94,
-    applicationRate: 87,
-    hiringSuccess: 76,
-    aiOptimization: 92
-  });
+  // Candidates State
+  const [companyOffers, setCompanyOffers] = useState<any[]>([])
+  const [selectedOffer, setSelectedOffer] = useState<string>('')
+  const [selectedCandidate, setSelectedCandidate] = useState<any>(null)
+  
+  // Edit Offer State
+  const [editingOfferId, setEditingOfferId] = useState<string | null>(null)
+  const [editOfferData, setEditOfferData] = useState({
+    title: '', location: '', modality: 'Híbrido', salary: '', description: '', skills: '', requirements: '', benefits: ''
+  })
+  
+  const [candidatesList, setCandidatesList] = useState<any[]>([])
+  const [candidateStats, setCandidateStats] = useState({ matchPromedio: 0, topCandidatos: 0, contactados: 0, entrevistas: 0 })
 
-  // Use the job offers hook
-  const { 
-    jobOffers, 
-    loading: jobOffersLoading, 
-    error: jobOffersError,
-    createJobOffer,
-    updateJobOffer,
-    deleteJobOffer,
-    getAIMatches
-  } = useJobOffers();
+  // Security State
+  const [passwordData, setPasswordData] = useState({ current: '', new: '', confirm: '' })
 
-  // Use the company profile hook - using company ID 1 for demo
-  const {
-    profile: companyProfile,
-    loading: profileLoading,
-    error: profileError,
-    updateProfile,
-    createProfile
-  } = useCompanyProfile(1);
-
-  // Create a mock mutation object for the UI
-  const updateProfileMutation = {
-    isPending: false,
-    isError: false,
-    isSuccess: false
-  };
-
-  // Initialize profile form data when company profile loads
   useEffect(() => {
-    if (companyProfile) {
-      setProfileFormData({
-        name: companyProfile.name || '',
-        email: companyProfile.email || '',
-        university: companyProfile.university || '',
-        description: companyProfile.description || '',
-        website: companyProfile.website || '',
-        location: companyProfile.location || ''
-      });
+    const companyId = localStorage.getItem('companyId')
+    
+    if (activeView === 'company-profile' && companyId) {
+      fetch(`${API_BASE_URL}/company/${companyId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.name) {
+            setCompanyProfile({
+              name: data.name || '',
+              ruc: data.ruc || '',
+              email: data.contact_email || data.email || '',
+              phone: data.phone || '',
+              website: data.website || '',
+              address: data.location || ''
+            })
+          }
+        })
+        .catch(err => console.error("Error fetching company profile:", err))
     }
-  }, [companyProfile]);
 
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024)
-      if (window.innerWidth >= 1024) {
-        setIsSidebarOpen(true)
+    if ((activeView === 'candidates' || activeView === 'dashboard') && companyId) {
+      fetch(`${API_BASE_URL}/company/${companyId}/job_offers`)
+        .then(res => res.json())
+        .then((data: any[]) => {
+          if (Array.isArray(data)) {
+            setCompanyOffers(data.map(offer => ({
+              ...offer,
+              id: offer.id.toString(),
+            })))
+          }
+        })
+        .catch(err => {
+          console.error("Error fetching company offers:", err)
+          // Fallback to empty if it fails
+          setCompanyOffers([])
+        })
+      
+      setSelectedOffer('') // Select nothing by default
+    }
+  }, [activeView])
+
+  const parseOfferDescription = (desc: string) => {
+    let description = desc || '';
+    let requirements = '';
+    let benefits = '';
+    let skills = '';
+    const reqSplit = description.split('\n\nRequisitos:\n');
+    description = reqSplit[0];
+    if (reqSplit[1]) {
+      const benSplit = reqSplit[1].split('\n\nBeneficios:\n');
+      requirements = benSplit[0];
+      if (benSplit[1]) {
+        const skillsSplit = benSplit[1].split('\n\nHabilidades Técnicas:\n');
+        benefits = skillsSplit[0];
+        skills = skillsSplit[1] || '';
       }
     }
-    
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
-
-  const loadDashboardData = async () => {
-    // AI Analytics for company
-    setAiAnalytics({
-      talentPoolSize: 1247,
-      matchAccuracy: 92,
-      applicationRate: 68,
-      hiringSuccess: 85,
-      aiOptimization: 89
-    })
+    return { description, requirements, benefits, skills };
   }
 
-  const handleCreateJobOffer = async (jobOfferData: JobOfferCreate) => {
-    try {
-      await createJobOffer(jobOfferData);
-      setShowJobOfferForm(false);
-    } catch (error) {
-      console.error('Error creating job offer:', error);
-      throw error;
-    }
+  const openEditOffer = (offer: any) => {
+    const parsed = parseOfferDescription(offer.description);
+    setEditOfferData({
+      title: offer.title || '',
+      location: offer.location || '', 
+      modality: offer.modality === 1 ? 'Presencial' : offer.modality === 2 ? 'Híbrido' : 'Remoto',
+      salary: offer.approximated_salary?.toString() || '',
+      description: parsed.description,
+      requirements: parsed.requirements,
+      benefits: parsed.benefits,
+      skills: parsed.skills
+    });
+    setEditingOfferId(offer.id);
+    setActiveView('edit-offer');
   }
 
-  const handleEditJobOffer = (jobOffer: any) => {
-    setEditingJobOffer(jobOffer);
-    setShowJobOfferForm(true);
-  }
-
-  const handleSaveProfile = async () => {
-    if (!editingProfile) return;
-    
+  const handleUpdateOffer = async () => {
+    if (!editingOfferId) return;
     try {
-      await updateProfile(1, editingProfile); // Using company ID 1 for demo
-      setEditingProfile(null);
-    } catch (error) {
-      console.error('Error updating profile:', error);
-    }
-  };
-
-  const handleSubmitJobOffer = async (data: JobOfferCreate) => {
-    try {
-      if (editingJobOffer && editingJobOffer.id) {
-        await updateJobOffer(editingJobOffer.id, data);
+      const payload = {
+        company_id: parseInt(localStorage.getItem('companyId') || '0'),
+        title: editOfferData.title,
+        description: `${editOfferData.description}\n\nRequisitos:\n${editOfferData.requirements}\n\nBeneficios:\n${editOfferData.benefits}\n\nHabilidades Técnicas:\n${editOfferData.skills}`,
+        required_hours: 30,
+        approximated_salary: parseInt(editOfferData.salary) || 0,
+        duration: 6,
+        start_date: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0],
+        modality: editOfferData.modality === 'Presencial' ? 1 : editOfferData.modality === 'Híbrido' ? 2 : 3,
+        location: editOfferData.location || null
+      }
+      const response = await fetch(`${API_BASE_URL}/job_offer/${editingOfferId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      if (response.ok) {
+        alert("Vacante actualizada exitosamente");
+        setActiveView('dashboard');
       } else {
-        await createJobOffer(data);
+        alert("Error al actualizar la vacante");
       }
-      setEditingJobOffer(null);
-      setShowJobOfferForm(false);
-    } catch (error) {
-      console.error('Error submitting job offer:', error);
-      alert('Error al guardar el proyecto');
+    } catch (e) {
+      console.error(e);
+      alert("Error de red");
     }
   }
 
-  const handleDeleteJobOffer = async (jobOfferId: number) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este proyecto?')) {
-      try {
-        await deleteJobOffer(jobOfferId);
-      } catch (error) {
-        console.error('Error deleting job offer:', error);
-        alert('Error al eliminar el proyecto');
-      }
-    }
-  }
-
-  const transformMatchData = (match: any): any => {
-    return {
-      ...match,
-      name: match.student_name,
-      career: match.student_career,
-      matchScore: match.match_score,
-      skills: match.student_skills,
-      experience: match.student_experience,
-      location: match.student_location,
-      availability: 'Disponible', // Default value since not in API
-      aiReason: match.ai_reason,
-      profileStrength: Math.round(match.embedding_similarity * 100),
-      isNew: true // Default value for new matches
-    };
-  };
-
-  const handleGetAIMatches = async (jobOfferId: number) => {
+  const handleDeleteOffer = async () => {
+    if (!editingOfferId) return;
+    if (!window.confirm("¿Seguro que quieres cerrar esta vacante?")) return;
     try {
-      const matches = await getAIMatches(jobOfferId);
-      const transformedMatches = matches.map(transformMatchData);
-      setAiMatches(transformedMatches);
-      setSelectedJobOfferId(jobOfferId);
-      setActiveTab('aplicaciones'); // Switch to applications tab to show matches
-    } catch (error) {
-      console.error('Error getting AI matches:', error);
-      alert('Error al obtener matches de IA. Asegúrate de que el backend esté ejecutándose.');
+      const response = await fetch(`${API_BASE_URL}/job_offer/${editingOfferId}`, { method: 'DELETE' })
+      if (response.ok) {
+        alert("Vacante cerrada exitosamente");
+        setActiveView('dashboard');
+      } else {
+        alert("Error al cerrar la vacante");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error de red");
     }
   }
 
-  const closeJobOfferForm = () => {
-    setShowJobOfferForm(false);
-    setEditingJobOffer(null);
-  }
+  const fetchCandidatesForOffer = async (offerId: string) => {
+    if (!offerId) {
+      setCandidatesList([])
+      setCandidateStats({ matchPromedio: 0, topCandidatos: 0, contactados: 0, entrevistas: 0 })
+      return
+    }
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen)
-  }
-
-  const sidebarItems = [
-    { id: 'inicio', label: 'Inicio', icon: Home },
-    { id: 'proyectos', label: 'Mis Proyectos', icon: Briefcase },
-    { id: 'aplicaciones', label: 'Aplicaciones', icon: Users },
-    { id: 'configuracion', label: 'Configuración', icon: Settings },
-  ]
-
-  const cardVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: (i: number) => ({
-      opacity: 1,
-      y: 0,
-      transition: {
-        delay: i * 0.1,
-        duration: 0.5,
-        ease: "easeOut" as const
+    try {
+      const matchRes = await fetch(`${API_BASE_URL}/aimodel/job_offer/best_students/${offerId}`, { method: 'POST' })
+      if (!matchRes.ok) throw new Error("Error fetching best students")
+      
+      const matchData = await matchRes.json()
+      
+      if (!Array.isArray(matchData) || matchData.length === 0) {
+        setCandidatesList([])
+        setCandidateStats({ matchPromedio: 0, topCandidatos: 0, contactados: 0, entrevistas: 0 })
+        return
       }
-    })
+
+      const detailedCandidates = await Promise.all(matchData.map(async (match: any) => {
+        try {
+          const studentRes = await fetch(`${API_BASE_URL}/student/${match.student_id}`)
+          const studentData = await studentRes.json()
+          
+          const skillsRes = await fetch(`${API_BASE_URL}/student/${match.student_id}/skills`)
+          const skillsData = await skillsRes.json()
+          const skills = Array.isArray(skillsData) ? skillsData.map((s: any) => s.skill_name || `Skill ${s.skill_id}`) : []
+
+          return {
+            name: `Estudiante Universitario #${match.student_id}`, // Name not available directly in student endpoint
+            email: 'Candidato protegido',
+            uni: studentData.university || 'Universidad Registrada',
+            match: Math.round(match.score * 100),
+            skills: skills.slice(0, 3), // Show up to 3 skills
+            time: 'Reciente',
+            score: match.score
+          }
+        } catch (e) {
+          return null
+        }
+      }))
+
+      const validCandidates = detailedCandidates.filter(c => c !== null).sort((a, b) => b.score - a.score)
+      
+      const avgMatch = validCandidates.length > 0 
+        ? validCandidates.reduce((acc, curr) => acc + curr.match, 0) / validCandidates.length
+        : 0
+
+      setCandidateStats({ 
+        matchPromedio: Math.round(avgMatch * 10) / 10, 
+        topCandidatos: validCandidates.length, 
+        contactados: 0, 
+        entrevistas: 0 
+      })
+      setCandidatesList(validCandidates)
+
+    } catch (err) {
+      console.error("Error fetching candidates:", err)
+      setCandidatesList([])
+      setCandidateStats({ matchPromedio: 0, topCandidatos: 0, contactados: 0, entrevistas: 0 })
+    }
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 text-white">
-      {/* Mobile Header */}
-      {isMobile && (
-        <header className="bg-blue-900/80 backdrop-blur-sm border-b border-blue-700/50 sticky top-0 z-50">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-[#6a00f4] to-[#ff1cf7] bg-clip-text text-transparent">
-              ProjectCore
-            </h1>
-            <button
-              onClick={toggleSidebar}
-              className="p-2 rounded-lg bg-[#6a00f4] text-white"
-            >
-              {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-          </div>
-        </header>
-      )}
+  useEffect(() => {
+    fetchCandidatesForOffer(selectedOffer)
+  }, [selectedOffer])
 
-      {/* Sidebar */}
-      <motion.aside
-        initial={false}
-        animate={{
-          x: isSidebarOpen ? 0 : isMobile ? -280 : -256,
-          opacity: isSidebarOpen ? 1 : isMobile ? 0 : 0.3
-        }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-        className={`fixed left-0 top-0 h-full w-64 bg-blue-900/95 backdrop-blur-sm border-r border-blue-700/50 transition-all duration-300 ease-in-out z-40 p-6 ${
-          isMobile ? 'shadow-2xl' : ''
-        }`}
-      >
-        <nav className="space-y-2">
-          {sidebarItems.map((item) => {
-            const Icon = item.icon
-            return (
-              <motion.button
-                key={item.id}
-                whileHover={{ x: 5 }}
-                onClick={() => {
-                  setActiveTab(item.id)
-                }}
-                className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-all ${
-                  activeTab === item.id 
-                    ? 'bg-gradient-to-r from-[#6a00f4]/30 to-[#ff1cf7]/30 border border-[#6a00f4]/40' 
-                    : 'hover:bg-white/5 text-white/70 hover:text-white'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                <span className="font-medium">{item.label}</span>
-              </motion.button>
-            )
-          })}
-        </nav>
+  const publishOffer = async () => {
+    const companyId = localStorage.getItem('companyId')
+    if (!companyId) {
+      alert("No se encontró el ID de la empresa.")
+      return
+    }
 
-        <div className="absolute bottom-6 left-6 right-6">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => console.log('Logout clicked')}
-            className="w-full flex items-center space-x-3 p-3 rounded-lg transition-all bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300"
-          >
-            <LogOut className="w-5 h-5" />
-            <span className="font-medium">Cerrar Sesión</span>
-          </motion.button>
+    try {
+      const payload = {
+        company_id: parseInt(companyId),
+        title: offerData.title,
+        description: `${offerData.description}\n\nRequisitos:\n${offerData.requirements}\n\nBeneficios:\n${offerData.benefits}\n\nHabilidades Técnicas:\n${offerData.skills}`,
+        required_hours: 30, // Default for practicante
+        approximated_salary: parseInt(offerData.salary) || 0,
+        duration: 6, // Default 6 months
+        start_date: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0], // Next month
+        modality: offerData.modality === 'Presencial' ? 1 : offerData.modality === 'Híbrido' ? 2 : 3,
+        location: offerData.location || null
+      }
+
+      const response = await fetch(`${API_BASE_URL}/register/job_offer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+
+      if (response.ok) {
+        setPostStep(4)
+      } else {
+        const errorData = await response.json()
+        alert(`Error al publicar: ${JSON.stringify(errorData)}`)
+      }
+    } catch (error) {
+      console.error("Error publishing offer:", error)
+      alert("Ocurrió un error de conexión al publicar la oferta.")
+    }
+  }
+
+  const handleUpdateProfile = async () => {
+    const companyId = localStorage.getItem('companyId')
+    if (!companyId) return
+
+    try {
+      // El backend requiere name, industry, company_culture para CompanyCreate
+      const response = await fetch(`${API_BASE_URL}/company/${companyId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: companyProfile.name,
+          industry: "Desarrollo", // Default fallback if not fetched
+          company_culture: "Innovadora",
+          // Extra fields in case backend is updated to support them:
+          contact_email: companyProfile.email,
+          phone: companyProfile.phone,
+          website: companyProfile.website,
+          location: companyProfile.address
+        })
+      })
+
+      if (response.ok) {
+        setIsEditingProfile(false)
+        alert("Perfil actualizado exitosamente")
+      } else {
+        alert("Hubo un error al actualizar el perfil")
+      }
+    } catch (err) {
+      console.error(err)
+      alert("Error de red al actualizar el perfil")
+    }
+  }
+
+  const handleUpdatePassword = async () => {
+    if (!passwordData.current || !passwordData.new || !passwordData.confirm) {
+      alert("Por favor llena todos los campos de contraseña")
+      return
+    }
+    if (passwordData.new !== passwordData.confirm) {
+      alert("Las nuevas contraseñas no coinciden")
+      return
+    }
+
+    const email = localStorage.getItem('userEmail') // Suponiendo que se guarda el email al hacer login
+    // Si no está, podríamos usar un endpoint que use el companyId o el token
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/${email || 'current'}/password`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          current_password: passwordData.current,
+          new_password: passwordData.new
+        })
+      })
+
+      if (response.ok) {
+        alert("Contraseña actualizada exitosamente")
+        setPasswordData({ current: '', new: '', confirm: '' })
+      } else {
+        alert("Error al actualizar contraseña. Verifica tu contraseña actual.")
+      }
+    } catch (err) {
+      console.error(err)
+      alert("Error de red al actualizar la contraseña")
+    }
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('authToken')
+    localStorage.removeItem('userEmail')
+    localStorage.removeItem('userRole')
+    localStorage.removeItem('userId')
+    localStorage.removeItem('companyId')
+    setUser(null)
+    setLocation('/')
+  }
+
+  const renderSidebar = () => (
+    <div className="w-64 bg-white border-r border-gray-100 flex flex-col h-screen fixed left-0 top-0">
+      <div className="p-6 border-b border-gray-50 flex items-center gap-3">
+        <div className="w-8 h-8 bg-[#1e3a8a] rounded-lg flex items-center justify-center">
+          <Building2 className="w-5 h-5 text-white" />
         </div>
-      </motion.aside>
+        <div>
+          <h2 className="font-bold text-gray-900 leading-tight">JobSwipe</h2>
+          <p className="text-xs text-gray-500">Panel Empresarial</p>
+        </div>
+      </div>
 
-      {/* Main Content */}
-      <main className={`flex-1 p-4 sm:p-6 transition-all duration-300 ${
-        isSidebarOpen ? 'lg:ml-64' : 'lg:ml-0'
-      } ${isMobile ? 'w-full pt-20' : 'max-w-full'}`}>
-        <AnimatePresence mode="wait">
-          {activeTab === 'inicio' && (
-            <motion.div
-              key="inicio"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-8"
-            >
-              {/* AI Recruitment Header */}
-              <div className="bg-gradient-to-r from-[#390062] to-[#8A4EFC] rounded-2xl p-6 text-white">
-                <div className="flex items-center justify-between">
+      <nav className="flex-1 p-4 space-y-1">
+        <button
+          onClick={() => setActiveView('dashboard')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+            activeView === 'dashboard' 
+              ? 'bg-[#1e3a8a] text-white' 
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          <LayoutDashboard className="w-5 h-5" />
+          Dashboard
+        </button>
+        <button
+          onClick={() => setActiveView('post-offer')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+            activeView === 'post-offer' 
+              ? 'bg-[#1e3a8a] text-white' 
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          <Briefcase className="w-5 h-5" />
+          Publicar Oferta
+        </button>
+        <button
+          onClick={() => {
+            setActiveView('candidates')
+            setSelectedCandidate(null)
+          }}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+            activeView === 'candidates' 
+              ? 'bg-[#1e3a8a] text-white' 
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          <Users className="w-5 h-5" />
+          Candidatos IA
+        </button>
+      </nav>
+
+      <div className="p-4 border-t border-gray-50 space-y-1">
+        <button 
+          onClick={() => setActiveView('company-profile')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+            activeView === 'company-profile' 
+              ? 'bg-[#1e3a8a] text-white' 
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          <Building2 className="w-5 h-5" />
+          Mi Empresa
+        </button>
+        <button 
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+        >
+          <LogOut className="w-5 h-5" />
+          Cerrar Sesión
+        </button>
+      </div>
+    </div>
+  )
+
+  const renderDashboard = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Panel de Control</h1>
+          <p className="text-gray-500">Monitorea tu rendimiento de reclutamiento</p>
+        </div>
+        <Button 
+          className="bg-[#1e3a8a] hover:bg-[#1e3a8a]/90 text-white gap-2 rounded-lg"
+          onClick={() => setActiveView('post-offer')}
+        >
+          <Plus className="w-4 h-4" />
+          Publicar Nueva Oferta
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-4 gap-6">
+        <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+          <CardContent className="p-6">
+            <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center mb-4">
+              <Briefcase className="w-5 h-5" />
+            </div>
+            <p className="text-sm text-gray-500 font-medium">Vacantes Activas</p>
+            <h3 className="text-3xl font-bold text-gray-900 mt-1">12</h3>
+            <p className="text-xs text-gray-400 mt-2">+2 esta semana</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+          <CardContent className="p-6">
+            <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center mb-4">
+              <Users className="w-5 h-5" />
+            </div>
+            <p className="text-sm text-gray-500 font-medium">Postulantes Totales</p>
+            <h3 className="text-3xl font-bold text-gray-900 mt-1">347</h3>
+            <p className="text-xs text-gray-400 mt-2">+48 esta semana</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+          <CardContent className="p-6">
+            <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center mb-4">
+              <Eye className="w-5 h-5" />
+            </div>
+            <p className="text-sm text-gray-500 font-medium">Vistas de Perfil</p>
+            <h3 className="text-3xl font-bold text-gray-900 mt-1">1,203</h3>
+            <p className="text-xs text-gray-400 mt-2">+12% vs semana anterior</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+          <CardContent className="p-6">
+            <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center mb-4">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+            <p className="text-sm text-gray-500 font-medium">Match Promedio</p>
+            <h3 className="text-3xl font-bold text-gray-900 mt-1">84%</h3>
+            <p className="text-xs text-gray-400 mt-2">+3% de mejora</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-3 gap-6">
+        <div className="col-span-2 space-y-4">
+          <h3 className="text-lg font-bold text-gray-900">Vacantes Publicadas</h3>
+          <Card className="bg-white border-gray-100 shadow-sm rounded-xl overflow-hidden">
+            <div className="divide-y divide-gray-50">
+              {companyOffers.length > 0 ? companyOffers.map((offer, i) => (
+                <div key={offer.id} onClick={() => openEditOffer(offer)} className="p-5 flex items-center justify-between hover:bg-gray-50/50 transition-colors cursor-pointer">
                   <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Brain className="w-6 h-6" />
-                      <h2 className="text-xl font-bold">Chamby AI Recruiter</h2>
-                    </div>
-                    <p className="text-white/90">Inteligencia artificial para encontrar el talento perfecto</p>
+                    <h4 className="font-semibold text-gray-900">{offer.title}</h4>
+                    <p className="text-sm text-gray-400 mt-1">S/ {offer.approximated_salary}</p>
                   </div>
-                  <motion.div 
-                    className="bg-white/20 p-3 rounded-full"
-                    animate={{ scale: [1, 1.1, 1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    <Radar className="w-8 h-8" />
-                  </motion.div>
+                  <div className="flex items-center gap-8">
+                    <div className="text-center">
+                      <p className="text-xs text-gray-400">Postulantes</p>
+                      <p className="font-semibold text-[#1e3a8a]">{Math.floor(Math.random() * 50)}</p>
+                    </div>
+                    <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-50 border-none font-medium">
+                      Activa
+                    </Badge>
+                  </div>
+                </div>
+              )) : (
+                <div className="p-5 text-center text-gray-500">No hay vacantes publicadas aún.</div>
+              )}
+            </div>
+          </Card>
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="text-lg font-bold text-gray-900">Acciones Rápidas</h3>
+          <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+            <CardContent className="p-4 space-y-3">
+              <button className="w-full text-left p-4 rounded-lg border border-gray-100 hover:border-[#1e3a8a]/20 hover:bg-blue-50/30 transition-all group">
+                <h4 className="font-semibold text-gray-900 group-hover:text-[#1e3a8a]">Revisar Nuevos Candidatos</h4>
+                <p className="text-xs text-gray-400 mt-1">23 candidatos esperando</p>
+              </button>
+              <button className="w-full text-left p-4 rounded-lg border border-gray-100 hover:border-[#1e3a8a]/20 hover:bg-blue-50/30 transition-all group">
+                <h4 className="font-semibold text-gray-900 group-hover:text-[#1e3a8a]">Programar Entrevistas</h4>
+                <p className="text-xs text-gray-400 mt-1">5 invitaciones pendientes</p>
+              </button>
+              <button className="w-full text-left p-4 rounded-lg border border-gray-100 hover:border-[#1e3a8a]/20 hover:bg-blue-50/30 transition-all group">
+                <h4 className="font-semibold text-gray-900 group-hover:text-[#1e3a8a]">Exportar Reportes</h4>
+                <p className="text-xs text-gray-400 mt-1">Generar analíticas</p>
+              </button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  )
+
+  const renderPostOffer = () => {
+    if (postStep === 4) {
+      return (
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mb-6">
+            <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Oferta Publicada Exitosamente!</h2>
+          <p className="text-gray-500 text-center max-w-md mb-8">
+            Tu vacante está ahora activa y los candidatos pueden empezar a postular. El motor de IA comenzará a buscar los mejores matches.
+          </p>
+          <div className="flex gap-4">
+            <Button 
+              variant="outline" 
+              className="border-gray-200 text-gray-600 rounded-lg"
+              onClick={() => {
+                setPostStep(1)
+                setOfferData({
+                  title: '', location: '', modality: 'Híbrido', salary: '', description: '', skills: '', requirements: '', benefits: ''
+                })
+              }}
+            >
+              Publicar Otra Oferta
+            </Button>
+            <Button 
+              className="bg-[#1e3a8a] hover:bg-[#1e3a8a]/90 text-white rounded-lg"
+              onClick={() => {
+                setActiveView('dashboard')
+                setPostStep(1)
+              }}
+            >
+              Ir al Dashboard
+            </Button>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className="max-w-3xl space-y-8">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Publicar Nueva Oferta</h1>
+          <p className="text-gray-500 mt-1">Completa los detalles para crear tu vacante bajo Modalidad Formativa</p>
+        </div>
+
+        {/* Stepper */}
+        <div className="flex items-center gap-4">
+          {[
+            { step: 1, label: 'Información Básica' },
+            { step: 2, label: 'Requisitos' },
+            { step: 3, label: 'Revisión' }
+          ].map((s, i) => (
+            <React.Fragment key={s.step}>
+              <div className="flex items-center gap-2">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  postStep >= s.step ? 'bg-[#1e3a8a] text-white' : 'bg-gray-100 text-gray-400'
+                }`}>
+                  {s.step}
+                </div>
+                <span className={`text-sm font-medium ${postStep >= s.step ? 'text-gray-900' : 'text-gray-400'}`}>
+                  {s.label}
+                </span>
+              </div>
+              {i < 2 && (
+                <div className="flex-1 h-px bg-gray-200" />
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+
+        <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+          <CardContent className="p-8">
+            {postStep === 1 && (
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Título de la Práctica</label>
+                  <Input 
+                    placeholder="ej. Practicante de Desarrollo Web" 
+                    className="bg-white border-gray-200 focus:border-[#1e3a8a] focus:ring-[#1e3a8a] text-gray-900"
+                    value={offerData.title}
+                    onChange={e => setOfferData({...offerData, title: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Ubicación</label>
+                  <Input 
+                    placeholder="ej. San Isidro, Lima" 
+                    className="bg-white border-gray-200 focus:border-[#1e3a8a] focus:ring-[#1e3a8a] text-gray-900"
+                    value={offerData.location}
+                    onChange={e => setOfferData({...offerData, location: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Modalidad de Trabajo</label>
+                  <Select value={offerData.modality} onValueChange={(val) => setOfferData({...offerData, modality: val})}>
+                    <SelectTrigger className="bg-white border-gray-200 focus:border-[#1e3a8a] focus:ring-[#1e3a8a] text-gray-900">
+                      <SelectValue placeholder="Selecciona..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white text-gray-900">
+                      <SelectItem value="Presencial" className="text-gray-900 focus:bg-gray-100">Presencial</SelectItem>
+                      <SelectItem value="Híbrido" className="text-gray-900 focus:bg-gray-100">Híbrido</SelectItem>
+                      <SelectItem value="Remoto" className="text-gray-900 focus:bg-gray-100">Remoto</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Subvención Mensual (S/)</label>
+                  <Input 
+                    type="number"
+                    placeholder="ej. 1200" 
+                    className="bg-white border-gray-200 focus:border-[#1e3a8a] focus:ring-[#1e3a8a] text-gray-900"
+                    value={offerData.salary}
+                    onChange={e => setOfferData({...offerData, salary: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Descripción de la Práctica</label>
+                  <Textarea 
+                    placeholder="Describe las responsabilidades y lo que el practicante realizará..." 
+                    className="min-h-[120px] bg-white border-gray-200 focus:border-[#1e3a8a] focus:ring-[#1e3a8a] text-gray-900"
+                    value={offerData.description}
+                    onChange={e => setOfferData({...offerData, description: e.target.value})}
+                  />
                 </div>
               </div>
+            )}
 
-              {/* AI Analytics Dashboard */}
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-indigo-600">Pool Talento</p>
-                        <p className="text-2xl font-bold text-indigo-800">{aiAnalytics.talentPoolSize}</p>
-                      </div>
-                      <Database className="w-8 h-8 text-indigo-500" />
-                    </div>
-                    <p className="text-xs text-indigo-600 mt-1">Candidatos disponibles</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-green-600">Precisión IA</p>
-                        <p className="text-2xl font-bold text-green-800">{aiAnalytics.matchAccuracy}%</p>
-                      </div>
-                      <Target className="w-8 h-8 text-green-500" />
-                    </div>
-                    <Progress value={aiAnalytics.matchAccuracy} className="mt-2" />
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-blue-600">Aplicaciones</p>
-                        <p className="text-2xl font-bold text-blue-800">{aiAnalytics.applicationRate}%</p>
-                      </div>
-                      <TrendingUp className="w-8 h-8 text-blue-500" />
-                    </div>
-                    <Progress value={aiAnalytics.applicationRate} className="mt-2" />
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-purple-600">Éxito Contrat.</p>
-                        <p className="text-2xl font-bold text-purple-800">{aiAnalytics.hiringSuccess}%</p>
-                      </div>
-                      <UserCheck className="w-8 h-8 text-purple-500" />
-                    </div>
-                    <Progress value={aiAnalytics.hiringSuccess} className="mt-2" />
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-orange-600">Optimización</p>
-                        <p className="text-2xl font-bold text-orange-800">{aiAnalytics.aiOptimization}%</p>
-                      </div>
-                      <Cpu className="w-8 h-8 text-orange-500" />
-                    </div>
-                    <Progress value={aiAnalytics.aiOptimization} className="mt-2" />
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* AI Candidate Matches */}
-              <Card className="border-2 border-[#390062]/20">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Bot className="w-6 h-6 text-[#390062]" />
-                      <CardTitle className="text-xl">Candidatos IA Recomendados</CardTitle>
-                      <Badge variant="secondary" className="bg-[#390062]/10 text-[#390062]">
-                        Powered by Chamby AI
-                      </Badge>
-                    </div>
-                    <Button variant="outline" className="border-[#390062] text-[#390062] hover:bg-[#390062] hover:text-white">
-                      <Zap className="w-4 h-4 mr-2" />
-                      Buscar Más Talento
-                    </Button>
-                  </div>
-                  <CardDescription>
-                    Candidatos seleccionados por IA basándose en tus ofertas laborales y criterios de contratación
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {aiMatches.map((candidate, index) => (
-                      <motion.div
-                        key={candidate.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        className="relative p-4 border rounded-lg hover:shadow-lg transition-all duration-300 bg-blue-900/95 backdrop-blur-sm border-r border-blue-700/50"
-                      >
-                        {candidate.isNew && (
-                          <div className="absolute -top-2 -right-2">
-                            <Badge className="bg-[#FF6B6B] text-white animate-pulse">
-                              ¡Nuevo!
-                            </Badge>
-                          </div>
-                        )}
-                        
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-4 flex-1">
-                            <Avatar className="w-12 h-12">
-                              <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${candidate.name || candidate.student_name || 'user'}`} />
-                              <AvatarFallback>{(candidate.name || candidate.student_name || 'U').split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                            </Avatar>
-                            
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <h3 className="font-semibold text-lg">{candidate.name || candidate.student_name || 'Usuario Desconocido'}</h3>
-                                <div className="flex items-center gap-1 bg-green-100 px-2 py-1 rounded-full">
-                                  <Sparkles className="w-3 h-3 text-green-600" />
-                                  <span className="text-xs font-medium text-green-600">{Math.round((candidate.matchScore || candidate.match_score || 0) * 100)}% Match</span>
-                                </div>
-                              </div>
-                              
-                              <p className="text-gray-600 mb-2">{candidate.career || candidate.student_career || 'Carrera no especificada'} • {candidate.experience || candidate.student_experience || 'Experiencia no especificada'}</p>
-                              
-                              <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
-                                <div className="flex items-center gap-1">
-                                  <MapPin className="w-4 h-4" />
-                                  <span>{candidate.location || candidate.student_location || 'Ubicación no especificada'}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Clock className="w-4 h-4" />
-                                  <span>Disponible: {candidate.availability || 'Disponible'}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <TrendingUp className="w-4 h-4" />
-                                  <span>Perfil: {candidate.profileStrength || Math.round((candidate.embedding_similarity || 0) * 100)}%</span>
-                                </div>
-                              </div>
-                              
-                              <div className="flex flex-wrap gap-1 mb-3">
-                                {(candidate.skills || candidate.student_skills || []).map((skill, idx) => (
-                                  <Badge key={idx} variant="secondary" className="text-xs">
-                                    {skill}
-                                  </Badge>
-                                ))}
-                              </div>
-                              
-                              <div className="bg-purple-50 p-3 rounded-lg mb-3">
-                                <div className="flex items-start gap-2">
-                                  <Brain className="w-4 h-4 text-purple-600 mt-0.5" />
-                                  <div>
-                                    <p className="text-xs font-medium text-purple-600 mb-1">Análisis IA:</p>
-                                    <p className="text-sm text-purple-800">{candidate.aiReason}</p>
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              <div className="flex items-center gap-2">
-                                <Button size="sm" className="bg-[#390062] hover:bg-[#2A0047]">
-                                  <Send className="w-4 h-4 mr-2" />
-                                  Contactar
-                                </Button>
-                                <Button size="sm" variant="outline">
-                                  <Eye className="w-4 h-4 mr-2" />
-                                  Ver Perfil
-                                </Button>
-                                <Button size="sm" variant="ghost">
-                                  <Heart className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-[#390062] mb-1">{candidate.matchScore}%</div>
-                            <div className="text-xs text-gray-500">Compatibilidad IA</div>
-                            <div className="text-xs text-gray-400 mt-1">Embedding: {candidate.embedding_similarity}</div>
-                          </div>
-                        </div>
-                      </motion.div>
+            {postStep === 2 && (
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Habilidades Técnicas Requeridas</label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {offerData.skills.split(',').filter(Boolean).map((skill, index) => (
+                      <span key={index} className="inline-flex items-center gap-1 px-3 py-1 bg-white border border-gray-200 text-gray-900 shadow-sm text-sm rounded-md">
+                        {skill}
+                        <button type="button" onClick={() => {
+                          const newSkills = offerData.skills.split(',').filter(s => s !== skill).join(',');
+                          setOfferData({...offerData, skills: newSkills});
+                        }} className="hover:text-red-500 text-gray-400 transition-colors">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-              {/* Welcome Section */}
-              <motion.div 
-                initial="hidden"
-                animate="visible"
-                variants={cardVariants}
-                custom={0}
-                className="mb-8"
-              >
-                <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-                  ¡Bienvenido! 👋
-                </h1>
-                <p className="text-white/70">
-                  Gestiona tus proyectos y encuentra el mejor talento estudiantil
-                </p>
-              </motion.div>
-
-              {/* Enhanced Quick Stats with AI Insights */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <Card className="bg-gradient-to-br from-blue-600 to-blue-700 text-white relative overflow-hidden">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-blue-100 text-sm font-medium">Ofertas Activas</p>
-                        <p className="text-3xl font-bold">{jobOffers.length}</p>
-                        <p className="text-xs text-blue-200 mt-1">+2 esta semana</p>
-                      </div>
-                      <div className="relative">
-                        <Briefcase className="h-8 w-8 text-blue-200" />
-                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                      </div>
-                    </div>
-                    <div className="absolute bottom-0 right-0 opacity-10">
-                      <Sparkles className="w-16 h-16" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-green-600 to-green-700 text-white relative overflow-hidden">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-green-100 text-sm font-medium">Aplicaciones IA</p>
-                        <p className="text-3xl font-bold">{aiMatches.length}</p>
-                        <p className="text-xs text-green-200 mt-1">92% precisión</p>
-                      </div>
-                      <div className="relative">
-                        <Users className="h-8 w-8 text-green-200" />
-                        <Bot className="absolute -bottom-1 -right-1 w-4 h-4 text-green-300" />
-                      </div>
-                    </div>
-                    <div className="absolute bottom-0 right-0 opacity-10">
-                      <Network className="w-16 h-16" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-purple-600 to-purple-700 text-white relative overflow-hidden">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-purple-100 text-sm font-medium">Pool Talento</p>
-                        <p className="text-3xl font-bold">{aiAnalytics.talentPoolSize || 1247}</p>
-                        <p className="text-xs text-purple-200 mt-1">Candidatos disponibles</p>
-                      </div>
-                      <div className="relative">
-                        <Star className="h-8 w-8 text-purple-200" />
-                        <Radar className="absolute -bottom-1 -right-1 w-4 h-4 text-purple-300 animate-spin" style={{animationDuration: '3s'}} />
-                      </div>
-                    </div>
-                    <div className="absolute bottom-0 right-0 opacity-10">
-                      <Database className="w-16 h-16" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-orange-600 to-orange-700 text-white relative overflow-hidden">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-orange-100 text-sm font-medium">Éxito IA</p>
-                        <p className="text-3xl font-bold">{aiAnalytics.hiringSuccess || 85}%</p>
-                        <p className="text-xs text-orange-200 mt-1">Contrataciones exitosas</p>
-                      </div>
-                      <div className="relative">
-                        <TrendingUp className="h-8 w-8 text-orange-200" />
-                        <Brain className="absolute -bottom-1 -right-1 w-4 h-4 text-orange-300" />
-                      </div>
-                    </div>
-                    <div className="absolute bottom-0 right-0 opacity-10">
-                      <Target className="w-16 h-16" />
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Quick Actions */}
-              <motion.div 
-                initial="hidden"
-                animate="visible"
-                variants={cardVariants}
-                custom={1}
-                className="bg-[#0f0f1a] border border-white/5 rounded-xl p-6"
-              >
-                <h2 className="text-xl font-semibold mb-4 text-white">Acciones Rápidas</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <motion.button
-                    whileHover={{ scale: 1.02, y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setShowJobOfferForm(true)}
-                    className="flex items-center space-x-3 p-4 bg-gradient-to-r from-[#6a00f4] to-[#ff1cf7] rounded-lg text-white font-medium transition-all duration-300 hover:shadow-lg hover:shadow-[#6a00f4]/25"
-                  >
-                    <Plus className="w-5 h-5" />
-                    <span>Crear Proyecto</span>
-                  </motion.button>
-
-                  <motion.button
-                    whileHover={{ scale: 1.02, y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setActiveTab('aplicaciones')}
-                    className="flex items-center space-x-3 p-4 bg-gradient-to-r from-[#f72585] to-[#b5179e] rounded-lg text-white font-medium transition-all duration-300 hover:shadow-lg hover:shadow-[#f72585]/25"
-                  >
-                    <Users className="w-5 h-5" />
-                    <span>Ver Aplicaciones</span>
-                  </motion.button>
-
-                  <motion.button
-                    whileHover={{ scale: 1.02, y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setActiveTab('proyectos')}
-                    className="flex items-center space-x-3 p-4 bg-gradient-to-r from-[#4ade80] to-[#22c55e] rounded-lg text-white font-medium transition-all duration-300 hover:shadow-lg hover:shadow-[#4ade80]/25"
-                  >
-                    <Briefcase className="w-5 h-5" />
-                    <span>Gestionar Proyectos</span>
-                  </motion.button>
+                  <Input 
+                    placeholder="Escribe una habilidad y presiona Enter o Coma" 
+                    className="bg-white border-gray-200 focus:border-[#1e3a8a] focus:ring-[#1e3a8a] text-gray-900"
+                    value={currentSkill}
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (val.endsWith(',')) {
+                        const newSkill = val.slice(0, -1).trim();
+                        if (newSkill) {
+                          const currentSkills = offerData.skills ? offerData.skills.split(',') : [];
+                          if (!currentSkills.includes(newSkill)) {
+                            setOfferData({...offerData, skills: [...currentSkills, newSkill].join(',')});
+                          }
+                        }
+                        setCurrentSkill('');
+                      } else {
+                        setCurrentSkill(val);
+                      }
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const newSkill = currentSkill.trim();
+                        if (newSkill) {
+                          const currentSkills = offerData.skills ? offerData.skills.split(',') : [];
+                          if (!currentSkills.includes(newSkill)) {
+                            setOfferData({...offerData, skills: [...currentSkills, newSkill].join(',')});
+                          }
+                        }
+                        setCurrentSkill('');
+                      }
+                    }}
+                  />
+                  <p className="text-xs text-gray-400 mt-2">La IA usará estas habilidades para calcular el % de match con candidatos</p>
                 </div>
-              </motion.div>
-            </motion.div>
-          )}
-
-          {activeTab === 'proyectos' && (
-            <motion.div
-              key="proyectos"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-6"
-            >
-              <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-white">Mis Proyectos</h1>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowJobOfferForm(true)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-[#6a00f4] to-[#ff1cf7] rounded-lg text-white font-medium"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Nuevo Proyecto</span>
-                </motion.button>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Requisitos del Postulante</label>
+                  <Textarea 
+                    placeholder="Lista los requisitos académicos y de experiencia..." 
+                    className="min-h-[100px] bg-white border-gray-200 focus:border-[#1e3a8a] focus:ring-[#1e3a8a] text-gray-900"
+                    value={offerData.requirements}
+                    onChange={e => setOfferData({...offerData, requirements: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Beneficios y Ventajas</label>
+                  <Textarea 
+                    placeholder="Lista los beneficios, capacitaciones, horarios flexibles..." 
+                    className="min-h-[100px] bg-white border-gray-200 focus:border-[#1e3a8a] focus:ring-[#1e3a8a] text-gray-900"
+                    value={offerData.benefits}
+                    onChange={e => setOfferData({...offerData, benefits: e.target.value})}
+                  />
+                </div>
               </div>
+            )}
 
-              <Tabs defaultValue="activos" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 bg-[#0f0f1a] border border-white/10">
-                  <TabsTrigger value="activos" className="data-[state=active]:bg-[#6a00f4] data-[state=active]:text-white">
-                    Activos
-                  </TabsTrigger>
-                  <TabsTrigger value="completados" className="data-[state=active]:bg-[#6a00f4] data-[state=active]:text-white">
-                    Completados
-                  </TabsTrigger>
-                  <TabsTrigger value="borradores" className="data-[state=active]:bg-[#6a00f4] data-[state=active]:text-white">
-                    Borradores
-                  </TabsTrigger>
-                </TabsList>
+            {postStep === 3 && (
+              <div className="space-y-6">
+                <div className="border-b border-gray-100 pb-4">
+                  <h3 className="text-lg font-bold text-gray-900">Revisa tu Publicación</h3>
+                  <p className="text-sm text-gray-500">Verifica toda la información antes de publicar</p>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-gray-400">Título</p>
+                    <p className="font-semibold text-gray-900">{offerData.title || 'No especificado'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Ubicación</p>
+                    <p className="font-semibold text-gray-900">{offerData.location || 'No especificado'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Modalidad</p>
+                    <p className="font-semibold text-gray-900">{offerData.modality || 'No especificado'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Subvención</p>
+                    <p className="font-semibold text-gray-900">S/ {offerData.salary || 'No especificado'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Habilidades Requeridas</p>
+                    <p className="font-semibold text-gray-900">{offerData.skills || 'No especificadas'}</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
-                <TabsContent value="activos" className="space-y-4">
-                  {jobOffersLoading ? (
-                    <div className="text-center py-12">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
-                      <p className="text-white/60">Cargando proyectos...</p>
+            <div className="mt-8 pt-6 border-t border-gray-50 flex items-center justify-between">
+              <Button 
+                variant="ghost"
+                className={`text-gray-500 hover:bg-gray-50 ${postStep === 1 ? 'invisible' : ''}`}
+                onClick={() => setPostStep(p => Math.max(1, p - 1))}
+              >
+                Atrás
+              </Button>
+              <Button 
+                className="bg-[#1e3a8a] hover:bg-[#1e3a8a]/90 text-white rounded-lg gap-2"
+                onClick={() => {
+                  // Validaciones
+                  if (postStep === 1) {
+                    if (!offerData.title || !offerData.location || !offerData.modality || !offerData.salary || !offerData.description) {
+                      alert('Por favor completa todos los campos de Información Básica.');
+                      return;
+                    }
+                  } else if (postStep === 2) {
+                    if (!offerData.skills || !offerData.requirements || !offerData.benefits) {
+                      alert('Por favor completa todos los campos de Requisitos.');
+                      return;
+                    }
+                  } else if (postStep === 3) {
+                    publishOffer();
+                    return;
+                  }
+                  
+                  setPostStep(p => Math.min(4, p + 1))
+                }}
+              >
+                {postStep === 3 ? 'Publicar Oferta' : 'Siguiente'}
+                {postStep < 3 && <ChevronRight className="w-4 h-4" />}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const renderCandidateProfile = () => {
+    const c = selectedCandidate
+    return (
+      <div className="space-y-6 max-w-5xl">
+        <button 
+          onClick={() => setSelectedCandidate(null)}
+          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 font-medium transition-colors"
+        >
+          <ChevronRight className="w-4 h-4 rotate-180" /> Volver a la Lista
+        </button>
+
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">{c.name}</h1>
+            <p className="text-gray-500 text-lg mt-1">{c.uni}</p>
+          </div>
+          <div className="bg-emerald-50 text-emerald-600 px-6 py-3 rounded-2xl text-center">
+            <p className="text-2xl font-bold">{c.match}%</p>
+            <p className="text-xs font-semibold">Match IA</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-6 mt-8">
+          {/* Left Column */}
+          <div className="col-span-2 space-y-6">
+            <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+              <CardContent className="p-6">
+                <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-gray-400" /> Información de Contacto
+                </h3>
+                <div className="space-y-3 text-sm text-gray-600">
+                  <p className="flex items-center gap-3"><Mail className="w-4 h-4" /> {c.email}</p>
+                  <p className="flex items-center gap-3"><span className="w-4 h-4 text-center">📞</span> +51 999 888 777</p>
+                  <p className="flex items-center gap-3"><span className="w-4 h-4 text-center">🔗</span> linkedin.com/in/{c.name.split(' ')[0].toLowerCase()}</p>
+                  <p className="flex items-center gap-3"><span className="w-4 h-4 text-center">🌐</span> {c.name.split(' ')[0].toLowerCase()}.dev</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+              <CardContent className="p-6">
+                <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Star className="w-5 h-5 text-gray-400" /> Habilidades Técnicas
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {c.skills.map((s: string) => (
+                    <Badge key={s} className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border-none px-3 py-1">
+                      {s}
+                    </Badge>
+                  ))}
+                  <Badge className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border-none px-3 py-1">HTML/CSS</Badge>
+                  <Badge className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border-none px-3 py-1">Git</Badge>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+              <CardContent className="p-6">
+                <h3 className="font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  <Briefcase className="w-5 h-5 text-gray-400" /> Experiencia
+                </h3>
+                <div className="space-y-6">
+                  <div className="relative pl-6 border-l-2 border-indigo-100">
+                    <div className="absolute w-3 h-3 bg-indigo-500 rounded-full -left-[7px] top-1"></div>
+                    <h4 className="font-bold text-gray-900">Voluntariado Técnico</h4>
+                    <p className="text-sm text-gray-500 mb-2">TechForGood • 6 meses</p>
+                    <p className="text-sm text-gray-600">Desarrollo de aplicación web para ONG local usando React</p>
+                  </div>
+                  <div className="relative pl-6 border-l-2 border-indigo-100">
+                    <div className="absolute w-3 h-3 bg-indigo-500 rounded-full -left-[7px] top-1"></div>
+                    <h4 className="font-bold text-gray-900">Proyecto Universitario</h4>
+                    <p className="text-sm text-gray-500 mb-2">Universidad • 4 meses</p>
+                    <p className="text-sm text-gray-600">Sistema de gestión académica con Node.js y MongoDB</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+              <CardContent className="p-6">
+                <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-gray-400" /> Idiomas
+                </h3>
+                <div className="space-y-2 text-sm text-gray-600">
+                  <p className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Español (Nativo)</p>
+                  <p className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Inglés (Intermedio)</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column */}
+          <div className="space-y-6">
+            <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+              <CardContent className="p-6">
+                <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-gray-400" /> Información Académica
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs text-gray-400">Universidad</p>
+                    <p className="font-medium text-gray-900 text-sm">{c.uni}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Carrera</p>
+                    <p className="font-medium text-gray-900 text-sm">Ingeniería de Sistemas</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Ciclo Actual</p>
+                    <p className="font-medium text-gray-900 text-sm">9no ciclo</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-emerald-50/50 border-emerald-100 shadow-sm rounded-xl">
+              <CardContent className="p-6">
+                <h3 className="font-bold text-gray-900 mb-2">Disponibilidad</h3>
+                <p className="text-emerald-600 font-medium">Inmediata</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+              <CardContent className="p-6">
+                <h3 className="font-bold text-gray-900 mb-4">Gestión de Candidato</h3>
+                <div className="space-y-3">
+                  <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg">
+                    <CheckCircle2 className="w-4 h-4 mr-2" /> Aceptar Candidato
+                  </Button>
+                  <Button variant="outline" className="w-full border-red-200 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg">
+                    <Trash2 className="w-4 h-4 mr-2" /> Descartar
+                  </Button>
+                  <p className="text-xs text-gray-400 text-center mt-2 leading-relaxed">
+                    Al aceptar, se enviará un correo automático al candidato y se creará un Match oficial.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const renderCandidates = () => {
+    if (selectedCandidate) {
+      return renderCandidateProfile()
+    }
+
+    const currentOfferName = selectedOffer 
+      ? companyOffers.find(o => o.id === selectedOffer)?.title || ''
+      : 'Ninguna oferta seleccionada'
+
+    return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Candidatos con IA</h1>
+          <p className="text-gray-500 mt-1">Postulantes filtrados para: <span className="font-semibold text-[#1e3a8a]">{currentOfferName}</span></p>
+        </div>
+        <div className="flex items-center gap-4">
+          <Select value={selectedOffer} onValueChange={setSelectedOffer}>
+            <SelectTrigger className="w-64 bg-white border-gray-100 shadow-sm h-10 text-gray-900 font-bold">
+              <SelectValue placeholder="Selecciona una oferta" />
+            </SelectTrigger>
+            <SelectContent className="bg-white text-gray-900">
+              {companyOffers.map(offer => (
+                <SelectItem key={offer.id} value={offer.id} className="text-gray-900 font-semibold focus:bg-gray-100">
+                  {offer.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" className="bg-white border-gray-200 text-gray-700 shadow-sm gap-2 rounded-lg h-10">
+            <Download className="w-4 h-4" /> Exportar CSV
+          </Button>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-4 gap-6">
+        <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="w-4 h-4 text-blue-500" />
+              <p className="text-sm text-gray-500 font-medium">Match Promedio</p>
+            </div>
+            <h3 className="text-3xl font-bold text-gray-900">{candidateStats.matchPromedio}%</h3>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-2">
+              <Star className="w-4 h-4 text-orange-400" />
+              <p className="text-sm text-gray-500 font-medium">Top Candidatos</p>
+            </div>
+            <h3 className="text-3xl font-bold text-gray-900">{candidateStats.topCandidatos}</h3>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-2">
+              <Mail className="w-4 h-4 text-green-500" />
+              <p className="text-sm text-gray-500 font-medium">Contactados</p>
+            </div>
+            <h3 className="text-3xl font-bold text-gray-900">{candidateStats.contactados}</h3>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-2">
+              <Calendar className="w-4 h-4 text-purple-500" />
+              <p className="text-sm text-gray-500 font-medium">Entrevistas</p>
+            </div>
+            <h3 className="text-3xl font-bold text-gray-900">{candidateStats.entrevistas}</h3>
+          </CardContent>
+        </Card>
+      </div>
+
+      {selectedOffer && candidatesList.length > 0 && (
+        <div className="bg-blue-50 border border-blue-100 text-blue-700 px-4 py-3 rounded-xl flex items-center gap-3 text-sm">
+          <Users className="w-5 h-5 text-blue-500" />
+          <p><strong>Filtro IA activo:</strong> Mostrando solo candidatos con compatibilidad ≥ 30% ({candidatesList.length} candidatos)</p>
+        </div>
+      )}
+
+      <Card className="bg-white border-gray-100 shadow-sm rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-gray-50 border-b border-gray-100 text-gray-600 font-semibold">
+              <tr>
+                <th className="py-4 px-6 font-semibold">Rank</th>
+                <th className="py-4 px-6 font-semibold">Candidato</th>
+                <th className="py-4 px-6 font-semibold">% Match IA</th>
+                <th className="py-4 px-6 font-semibold">Top Skills</th>
+                <th className="py-4 px-6 font-semibold">Postulación</th>
+                <th className="py-4 px-6 font-semibold">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {candidatesList.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-gray-500">
+                    No hay candidatos para mostrar. Selecciona una oferta arriba para ver los resultados del emparejamiento con IA.
+                  </td>
+                </tr>
+              ) : (
+                candidatesList.map((c, i) => (
+                <tr key={i} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="py-4 px-6">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 font-bold flex items-center justify-center">
+                        {i + 1}
+                      </div>
+                      {i < candidateStats.topCandidatos && <Star className="w-4 h-4 text-amber-400 fill-amber-400" />}
                     </div>
-                  ) : jobOffersError ? (
-                    <div className="text-center py-12">
-                      <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-                      <p className="text-red-400">Error al cargar proyectos: {jobOffersError}</p>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div>
+                      <p className="font-semibold text-gray-900">{c.name}</p>
+                      <p className="text-xs text-gray-500">{c.email}</p>
+                      <p className="text-xs text-gray-400">{c.uni}</p>
                     </div>
-                  ) : jobOffers.length === 0 ? (
-                    <div className="text-center py-12">
-                      <FolderOpen className="w-16 h-16 text-white/30 mx-auto mb-4" />
-                      <p className="text-white/60">No tienes proyectos activos</p>
-                      <p className="text-white/40 text-sm mt-2">Crea tu primer proyecto para empezar</p>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-16 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${c.match}%` }} />
+                      </div>
+                      <span className="font-medium text-emerald-600">{c.match}%</span>
                     </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {jobOffers.map((jobOffer, index) => (
-                        <motion.div
-                          key={jobOffer.id}
-                          custom={index}
-                          variants={cardVariants}
-                          initial="hidden"
-                          animate="visible"
-                        >
-                          <Card className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 border-gray-700/50 hover:border-purple-500/50 transition-all duration-300">
-                            <CardHeader>
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <CardTitle className="text-white text-lg mb-2">{jobOffer.title}</CardTitle>
-                                  <CardDescription className="text-gray-300 text-sm line-clamp-2">
-                                    {jobOffer.description}
-                                  </CardDescription>
-                                </div>
-                                <div className="flex gap-2 ml-4">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleEditJobOffer(jobOffer)}
-                                    className="text-gray-400 hover:text-white hover:bg-gray-700"
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleDeleteJobOffer(jobOffer.id)}
-                                    className="text-gray-400 hover:text-red-400 hover:bg-gray-700"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                              <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div className="flex items-center gap-2 text-gray-300">
-                                  <DollarSign className="w-4 h-4 text-green-400" />
-                                  <span>S/ {jobOffer.approximated_salary}</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-gray-300">
-                                  <Clock className="w-4 h-4 text-blue-400" />
-                                  <span>{jobOffer.required_hours}h/sem</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-gray-300">
-                                  <Calendar className="w-4 h-4 text-purple-400" />
-                                  <span>{jobOffer.duration} meses</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-gray-300">
-                                  <MapPin className="w-4 h-4 text-orange-400" />
-                                  <span>
-                                    {jobOffer.modality === 1 ? 'Presencial' : 
-                                     jobOffer.modality === 2 ? 'Remoto' : 'Híbrido'}
-                                  </span>
-                                </div>
-                              </div>
-                              
-                              <div className="flex gap-2">
-                                <Button
-                                  onClick={() => handleGetAIMatches(jobOffer.id)}
-                                  className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
-                                  disabled={jobOffersLoading}
-                                >
-                                  <Brain className="w-4 h-4 mr-2" />
-                                  Match IA
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </motion.div>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="flex flex-wrap gap-1">
+                      {c.skills.map((s: string) => (
+                        <span key={s} className="px-2 py-1 bg-indigo-50 text-indigo-600 rounded text-xs font-medium">
+                          {s}
+                        </span>
                       ))}
                     </div>
-                  )}
-                </TabsContent>
+                  </td>
+                  <td className="py-4 px-6 text-gray-500">{c.time}</td>
+                  <td className="py-4 px-6">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setSelectedCandidate(c)}
+                      className="bg-white border-gray-200 text-gray-700 hover:bg-gray-50 rounded-lg"
+                    >
+                      Ver Perfil
+                    </Button>
+                  </td>
+                </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+    )
+  }
 
-                <TabsContent value="completados" className="space-y-4">
-                  <div className="text-center py-12">
-                    <CheckCircle className="w-16 h-16 text-white/30 mx-auto mb-4" />
-                    <p className="text-white/60">No tienes proyectos completados</p>
-                  </div>
-                </TabsContent>
+  const renderCompanyProfile = () => (
+    <div className="max-w-3xl space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Perfil Empresarial</h1>
+        <p className="text-gray-500 mt-1">Gestiona la información de tu empresa</p>
+      </div>
 
-                <TabsContent value="borradores" className="space-y-4">
-                  <div className="text-center py-12">
-                    <FileText className="w-16 h-16 text-white/30 mx-auto mb-4" />
-                    <p className="text-white/60">No tienes borradores guardados</p>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </motion.div>
-          )}
+      <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+        <CardContent className="p-8 space-y-6">
+          <div className="flex items-center gap-4 border-b border-gray-100 pb-6">
+            <div className="w-16 h-16 bg-[#1e3a8a] rounded-xl flex items-center justify-center">
+              <Building2 className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">{companyProfile.name || 'Empresa'}</h2>
+              <p className="text-sm text-gray-500">RUC: {companyProfile.ruc || 'N/A'}</p>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">Nombre de la Empresa</label>
+              <Input 
+                value={companyProfile.name}
+                onChange={e => setCompanyProfile({...companyProfile, name: e.target.value})}
+                readOnly={!isEditingProfile}
+                className={`border-white focus:border-gray-200 bg-gray-50 shadow-none focus:bg-white text-gray-900 ${!isEditingProfile ? 'opacity-75 cursor-not-allowed' : ''}`} 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">Correo Corporativo</label>
+              <Input 
+                value={companyProfile.email}
+                onChange={e => setCompanyProfile({...companyProfile, email: e.target.value})}
+                readOnly={!isEditingProfile}
+                className={`border-white focus:border-gray-200 bg-gray-50 shadow-none focus:bg-white text-gray-900 ${!isEditingProfile ? 'opacity-75 cursor-not-allowed' : ''}`} 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">Teléfono</label>
+              <Input 
+                value={companyProfile.phone}
+                onChange={e => setCompanyProfile({...companyProfile, phone: e.target.value})}
+                readOnly={!isEditingProfile}
+                className={`border-white focus:border-gray-200 bg-gray-50 shadow-none focus:bg-white text-gray-900 ${!isEditingProfile ? 'opacity-75 cursor-not-allowed' : ''}`} 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">Sitio Web</label>
+              <Input 
+                value={companyProfile.website}
+                onChange={e => setCompanyProfile({...companyProfile, website: e.target.value})}
+                readOnly={!isEditingProfile}
+                className={`border-white focus:border-gray-200 bg-gray-50 shadow-none focus:bg-white text-gray-900 ${!isEditingProfile ? 'opacity-75 cursor-not-allowed' : ''}`} 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">Dirección</label>
+              <Input 
+                value={companyProfile.address}
+                onChange={e => setCompanyProfile({...companyProfile, address: e.target.value})}
+                readOnly={!isEditingProfile}
+                className={`border-white focus:border-gray-200 bg-gray-50 shadow-none focus:bg-white text-gray-900 ${!isEditingProfile ? 'opacity-75 cursor-not-allowed' : ''}`} 
+              />
+            </div>
+          </div>
 
-          {activeTab === 'aplicaciones' && (
-            <motion.div
-              key="aplicaciones"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-6"
+          <div className="flex gap-4">
+            {!isEditingProfile ? (
+              <Button 
+                onClick={() => setIsEditingProfile(true)}
+                className="w-full bg-[#1e3a8a] hover:bg-[#1e3a8a]/90 text-white rounded-lg"
+              >
+                <Edit2 className="w-4 h-4 mr-2" /> Editar
+              </Button>
+            ) : (
+              <>
+                <Button 
+                  variant="outline"
+                  onClick={() => setIsEditingProfile(false)}
+                  className="w-full border-gray-200 text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg"
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={handleUpdateProfile}
+                  className="w-full bg-[#1e3a8a] hover:bg-[#1e3a8a]/90 text-white rounded-lg"
+                >
+                  <Building2 className="w-4 h-4 mr-2" /> Guardar Cambios
+                </Button>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+        <CardContent className="p-8 space-y-6">
+          <div className="flex items-center gap-2 text-gray-900 font-bold mb-4">
+            <Lock className="w-5 h-5" />
+            <h3>Seguridad</h3>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">Contraseña Actual</label>
+              <Input 
+                type="password" 
+                placeholder="••••••••" 
+                value={passwordData.current}
+                onChange={e => setPasswordData({...passwordData, current: e.target.value})}
+                className="border-gray-200 focus:border-[#1e3a8a]" 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">Nueva Contraseña</label>
+              <Input 
+                type="password" 
+                placeholder="••••••••" 
+                value={passwordData.new}
+                onChange={e => setPasswordData({...passwordData, new: e.target.value})}
+                className="border-gray-200 focus:border-[#1e3a8a]" 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">Confirmar Nueva Contraseña</label>
+              <Input 
+                type="password" 
+                placeholder="••••••••" 
+                value={passwordData.confirm}
+                onChange={e => setPasswordData({...passwordData, confirm: e.target.value})}
+                className="border-gray-200 focus:border-[#1e3a8a]" 
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-4 pt-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setPasswordData({ current: '', new: '', confirm: '' })}
+              className="w-full border-gray-200 text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg"
             >
-              <h1 className="text-3xl font-bold text-white">Aplicaciones de Estudiantes</h1>
-
-              <Tabs defaultValue="pendientes" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 bg-[#0f0f1a] border border-white/10">
-                  <TabsTrigger value="pendientes" className="data-[state=active]:bg-[#6a00f4] data-[state=active]:text-white">
-                    Pendientes
-                  </TabsTrigger>
-                  <TabsTrigger value="aceptadas" className="data-[state=active]:bg-[#6a00f4] data-[state=active]:text-white">
-                    Aceptadas
-                  </TabsTrigger>
-                  <TabsTrigger value="rechazadas" className="data-[state=active]:bg-[#6a00f4] data-[state=active]:text-white">
-                    Rechazadas
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="pendientes" className="space-y-4">
-                  {aiMatches.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Users className="w-16 h-16 text-white/30 mx-auto mb-4" />
-                      <p className="text-white/60">No hay aplicaciones pendientes</p>
-                      <p className="text-white/40 text-sm mt-2">
-                        Usa el botón "Match IA" en tus proyectos para encontrar candidatos
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <p className="text-white/80">
-                          Mostrando {aiMatches.length} candidatos encontrados por IA
-                        </p>
-                        <Badge variant="secondary" className="bg-purple-600/20 text-purple-300">
-                          Matches IA
-                        </Badge>
-                      </div>
-                      <div className="grid gap-4">
-                        {aiMatches.map((candidate, index) => (
-                          <motion.div
-                            key={candidate.id || index}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                          >
-                            <Card className={`bg-gradient-to-br from-gray-800/80 to-gray-900/80 border-gray-700/50 hover:border-purple-500/50 transition-all duration-300 ${
-                              candidate.isNew ? 'ring-2 ring-purple-500/30' : ''
-                            }`}>
-                              <CardHeader>
-                                <div className="flex items-start justify-between">
-                                  <div className="flex items-center space-x-3">
-                                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center text-white font-bold">
-                                      {(candidate.name || candidate.student_name || 'U').charAt(0).toUpperCase()}
-                                    </div>
-                                    <div>
-                                      <h3 className="text-lg font-semibold text-white">
-                                        {candidate.name || candidate.student_name || 'Usuario Desconocido'}
-                                      </h3>
-                                      <p className="text-gray-300 text-sm">
-                                        {candidate.career || candidate.student_career || 'Carrera no especificada'}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <Badge 
-                                      variant="secondary" 
-                                      className="bg-green-600/20 text-green-300"
-                                    >
-                                      {Math.round((candidate.matchScore || candidate.match_score || 0) * 100)}% Match
-                                    </Badge>
-                                    {candidate.isNew && (
-                                      <Badge variant="secondary" className="bg-purple-600/20 text-purple-300">
-                                        Nuevo
-                                      </Badge>
-                                    )}
-                                  </div>
-                                </div>
-                              </CardHeader>
-                              <CardContent className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                  <div className="flex items-center space-x-2 text-gray-300">
-                                    <Briefcase className="w-4 h-4 text-blue-400" />
-                                    <span>{candidate.experience || candidate.student_experience || 'No especificado'}</span>
-                                  </div>
-                                  <div className="flex items-center space-x-2 text-gray-300">
-                                    <MapPin className="w-4 h-4 text-orange-400" />
-                                    <span>{candidate.location || candidate.student_location || 'Ubicación no especificada'}</span>
-                                  </div>
-                                  <div className="flex items-center space-x-2 text-gray-300">
-                                    <Clock className="w-4 h-4 text-green-400" />
-                                    <span>{candidate.availability || 'Disponible'}</span>
-                                  </div>
-                                  <div className="flex items-center space-x-2 text-gray-300">
-                                    <TrendingUp className="w-4 h-4 text-purple-400" />
-                                    <span>Perfil: {candidate.profileStrength || Math.round((candidate.embedding_similarity || 0) * 100)}%</span>
-                                  </div>
-                                </div>
-                                
-                                {(candidate.skills || candidate.student_skills) && (
-                                  <div className="space-y-2">
-                                    <p className="text-sm font-medium text-gray-300">Habilidades:</p>
-                                    <div className="flex flex-wrap gap-2">
-                                      {(candidate.skills || candidate.student_skills || []).slice(0, 4).map((skill, skillIndex) => (
-                                        <Badge 
-                                          key={skillIndex} 
-                                          variant="outline" 
-                                          className="border-gray-600 text-gray-300 text-xs"
-                                        >
-                                          {skill}
-                                        </Badge>
-                                      ))}
-                                      {(candidate.skills || candidate.student_skills || []).length > 4 && (
-                                        <Badge variant="outline" className="border-gray-600 text-gray-400 text-xs">
-                                          +{(candidate.skills || candidate.student_skills || []).length - 4} más
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {(candidate.aiReason || candidate.ai_reason) && (
-                                  <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-3">
-                                    <p className="text-sm text-purple-200">
-                                      <strong>Razón de Match IA:</strong> {candidate.aiReason || candidate.ai_reason}
-                                    </p>
-                                  </div>
-                                )}
-                                
-                                <div className="flex gap-2">
-                                  <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white">
-                                    <UserCheck className="w-4 h-4 mr-2" />
-                                    Aceptar
-                                  </Button>
-                                  <Button variant="outline" className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-700">
-                                    <Users className="w-4 h-4 mr-2" />
-                                    Contactar
-                                  </Button>
-                                  <Button variant="outline" size="icon" className="border-gray-600 text-gray-300 hover:bg-gray-700">
-                                    <Eye className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="aceptadas" className="space-y-4">
-                  <div className="text-center py-12">
-                    <CheckCircle className="w-16 h-16 text-white/30 mx-auto mb-4" />
-                    <p className="text-white/60">No hay aplicaciones aceptadas</p>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="rechazadas" className="space-y-4">
-                  <div className="text-center py-12">
-                    <X className="w-16 h-16 text-white/30 mx-auto mb-4" />
-                    <p className="text-white/60">No hay aplicaciones rechazadas</p>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </motion.div>
-          )}
-
-          {activeTab === 'configuracion' && (
-            <motion.div
-              key="configuracion"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-6"
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleUpdatePassword}
+              className="w-full bg-[#1e3a8a] hover:bg-[#1e3a8a]/90 text-white rounded-lg"
             >
-              <h1 className="text-3xl font-bold text-white">Configuración</h1>
-              
-              <Card className="bg-[#0f0f1a] border-white/10">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <User className="w-5 h-5" />
-                    Información de la Empresa
-                  </CardTitle>
-                  <CardDescription className="text-white/60">
-                    Actualiza la información de tu empresa y perfil
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-white/70 mb-2">
-                        Nombre de la Empresa
-                      </label>
-                      <input
-                        type="text"
-                        value={editingProfile?.name || profile?.name || ''}
-                        onChange={(e) => setEditingProfile(prev => ({ ...prev, name: e.target.value }))}
-                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#6a00f4]"
-                        placeholder="Ingresa el nombre de tu empresa"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-white/70 mb-2">
-                        Nombre del Contacto
-                      </label>
-                      <input
-                        type="text"
-                        value={editingProfile?.contact_name || profile?.contact_name || ''}
-                        onChange={(e) => setEditingProfile(prev => ({ ...prev, contact_name: e.target.value }))}
-                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#6a00f4]"
-                        placeholder="Ingresa tu nombre"
-                      />
-                    </div>
-                  </div>
+              Guardar
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-white/70 mb-2">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        value={editingProfile?.email || profile?.email || ''}
-                        onChange={(e) => setEditingProfile(prev => ({ ...prev, email: e.target.value }))}
-                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#6a00f4]"
-                        placeholder="empresa@ejemplo.com"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-white/70 mb-2">
-                        Teléfono
-                      </label>
-                      <input
-                        type="tel"
-                        value={editingProfile?.phone || profile?.phone || ''}
-                        onChange={(e) => setEditingProfile(prev => ({ ...prev, phone: e.target.value }))}
-                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#6a00f4]"
-                        placeholder="+51 999 999 999"
-                      />
-                    </div>
-                  </div>
+      <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+        <CardContent className="p-8">
+          <div className="flex items-center gap-2 text-gray-900 font-bold mb-2">
+            <LogOut className="w-5 h-5" />
+            <h3>Cerrar Sesión</h3>
+          </div>
+          <p className="text-sm text-gray-500 mb-4">Salir de tu cuenta empresarial en este dispositivo</p>
+          <Button variant="outline" onClick={handleLogout} className="w-full border-gray-200 text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg">
+            Cerrar Sesión
+          </Button>
+        </CardContent>
+      </Card>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-white/70 mb-2">
-                        Industria
-                      </label>
-                      <input
-                        type="text"
-                        value={editingProfile?.industry || profile?.industry || ''}
-                        onChange={(e) => setEditingProfile(prev => ({ ...prev, industry: e.target.value }))}
-                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#6a00f4]"
-                        placeholder="Tecnología, Finanzas, etc."
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-white/70 mb-2">
-                        Ubicación
-                      </label>
-                      <input
-                        type="text"
-                        value={editingProfile?.location || profile?.location || ''}
-                        onChange={(e) => setEditingProfile(prev => ({ ...prev, location: e.target.value }))}
-                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#6a00f4]"
-                        placeholder="Lima, Perú"
-                      />
-                    </div>
-                  </div>
+      <Card className="bg-red-50 border-red-100 shadow-sm rounded-xl">
+        <CardContent className="p-8">
+          <div className="flex items-center gap-2 text-red-600 font-bold mb-2">
+            <Trash2 className="w-5 h-5" />
+            <h3>Zona de Peligro</h3>
+          </div>
+          <p className="text-sm text-red-500 mb-4">
+            Eliminar la cuenta empresarial es permanente. Se borrarán todas tus vacantes publicadas, candidatos y datos históricos.
+          </p>
+          <Button variant="outline" className="w-full border-red-200 text-red-600 bg-white hover:bg-red-50 hover:text-red-700 rounded-lg">
+            Eliminar Cuenta Empresarial
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  )
 
-                  <div>
-                    <label className="block text-sm font-medium text-white/70 mb-2">
-                      Descripción de la Empresa
-                    </label>
-                    <textarea
-                      value={editingProfile?.description || profile?.description || ''}
-                      onChange={(e) => setEditingProfile(prev => ({ ...prev, description: e.target.value }))}
-                      rows={4}
-                      className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#6a00f4] resize-none"
-                      placeholder="Describe tu empresa, cultura y valores..."
-                    />
-                  </div>
+  const renderEditOffer = () => (
+    <div className="space-y-6 max-w-4xl">
+      <div className="flex items-center gap-4">
+        <button onClick={() => setActiveView('dashboard')} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+          <ChevronLeft className="w-5 h-5 text-gray-600" />
+        </button>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            Editar Vacante
+          </h1>
+          <p className="text-sm text-gray-500">ID: {editingOfferId}</p>
+        </div>
+      </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-white/70 mb-2">
-                      Sitio Web
-                    </label>
-                    <input
-                      type="url"
-                      value={editingProfile?.website || profile?.website || ''}
-                      onChange={(e) => setEditingProfile(prev => ({ ...prev, website: e.target.value }))}
-                      className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#6a00f4]"
-                      placeholder="https://www.tuempresa.com"
-                    />
-                  </div>
+      <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+        <CardContent className="p-8 space-y-8">
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">Título de la Práctica</label>
+            <Input 
+              value={editOfferData.title} 
+              onChange={e => setEditOfferData({...editOfferData, title: e.target.value})}
+              className="bg-white border-gray-200 text-gray-900 focus:border-[#1e3a8a]"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">Ubicación</label>
+            <Input 
+              value={editOfferData.location} 
+              onChange={e => setEditOfferData({...editOfferData, location: e.target.value})}
+              className="bg-white border-gray-200 text-gray-900 focus:border-[#1e3a8a]"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">Modalidad de Trabajo</label>
+            <Select value={editOfferData.modality} onValueChange={v => setEditOfferData({...editOfferData, modality: v})}>
+              <SelectTrigger className="bg-white border-gray-200 text-gray-900">
+                <SelectValue placeholder="Selecciona..." />
+              </SelectTrigger>
+              <SelectContent className="bg-white text-gray-900">
+                <SelectItem value="Presencial">Presencial</SelectItem>
+                <SelectItem value="Remoto">Remoto</SelectItem>
+                <SelectItem value="Híbrido">Híbrido</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">Subvención Mensual (S/)</label>
+            <Input 
+              type="number"
+              value={editOfferData.salary} 
+              onChange={e => setEditOfferData({...editOfferData, salary: e.target.value})}
+              className="bg-white border-gray-200 text-gray-900 focus:border-[#1e3a8a]"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">Habilidades Técnicas Requeridas</label>
+            <Input 
+              value={editOfferData.skills} 
+              onChange={e => setEditOfferData({...editOfferData, skills: e.target.value})}
+              className="bg-white border-gray-200 text-gray-900 focus:border-[#1e3a8a]"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">Descripción</label>
+            <Textarea 
+              value={editOfferData.description} 
+              onChange={e => setEditOfferData({...editOfferData, description: e.target.value})}
+              className="min-h-[120px] bg-white border-gray-200 text-gray-900 focus:border-[#1e3a8a]"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">Requisitos</label>
+            <Textarea 
+              value={editOfferData.requirements} 
+              onChange={e => setEditOfferData({...editOfferData, requirements: e.target.value})}
+              className="min-h-[120px] bg-white border-gray-200 text-gray-900 focus:border-[#1e3a8a]"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">Beneficios</label>
+            <Textarea 
+              value={editOfferData.benefits} 
+              onChange={e => setEditOfferData({...editOfferData, benefits: e.target.value})}
+              className="min-h-[120px] bg-white border-gray-200 text-gray-900 focus:border-[#1e3a8a]"
+            />
+          </div>
+          
+          <div className="flex gap-4 pt-4 border-t border-gray-100">
+            <Button 
+              onClick={handleUpdateOffer}
+              className="flex-1 bg-[#1e3a8a] hover:bg-[#1e3a8a]/90 text-white rounded-lg h-12"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              Guardar Cambios
+            </Button>
+            <Button 
+              onClick={handleDeleteOffer}
+              variant="outline"
+              className="flex-1 border-red-200 text-red-600 bg-white hover:bg-red-50 rounded-lg h-12"
+            >
+              <XCircle className="w-4 h-4 mr-2" />
+              Cerrar Vacante
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
 
-                  <div className="flex gap-3">
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={handleSaveProfile}
-                      disabled={updateProfileMutation.isPending}
-                      className="px-6 py-2 bg-gradient-to-r from-[#6a00f4] to-[#ff1cf7] rounded-lg text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                      {updateProfileMutation.isPending ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Guardando...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="w-4 h-4" />
-                          Guardar Cambios
-                        </>
-                      )}
-                    </motion.button>
-                    
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => setEditingProfile(null)}
-                      className="px-6 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white font-medium border border-white/20"
-                    >
-                      Cancelar
-                    </motion.button>
-                  </div>
-
-                  {updateProfileMutation.isError && (
-                    <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
-                      <p className="text-red-200 text-sm">
-                        Error al actualizar el perfil. Por favor, intenta nuevamente.
-                      </p>
-                    </div>
-                  )}
-
-                  {updateProfileMutation.isSuccess && (
-                    <div className="p-3 bg-green-500/20 border border-green-500/30 rounded-lg">
-                      <p className="text-green-200 text-sm">
-                        Perfil actualizado exitosamente.
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Account Actions */}
-              <Card className="bg-[#0f0f1a] border-white/10">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <Settings className="w-5 h-5" />
-                    Configuración de Cuenta
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
-                    <div>
-                      <h3 className="text-white font-medium">Notificaciones por Email</h3>
-                      <p className="text-white/60 text-sm">Recibe notificaciones sobre nuevos candidatos</p>
-                    </div>
-                    <button className="w-12 h-6 bg-[#6a00f4] rounded-full relative transition-colors">
-                      <div className="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5 transition-transform" />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
-                    <div>
-                      <h3 className="text-white font-medium">Perfil Público</h3>
-                      <p className="text-white/60 text-sm">Permite que los estudiantes vean tu empresa</p>
-                    </div>
-                    <button className="w-12 h-6 bg-[#6a00f4] rounded-full relative transition-colors">
-                      <div className="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5 transition-transform" />
-                    </button>
-                  </div>
-
-                  <div className="pt-4 border-t border-white/10">
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => console.log('Logout')}
-                      className="w-full px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 rounded-lg text-red-200 font-medium flex items-center justify-center gap-2"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Cerrar Sesión
-                    </motion.button>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
-
-      {/* Overlay for mobile */}
-      <AnimatePresence>
-        {isMobile && isSidebarOpen && (
-          <motion.div 
-            key="mobile-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.5 }}
-            exit={{ opacity: 0 }}
+  return (
+    <div className="min-h-screen bg-[#f4f7fb] flex">
+      {renderSidebar()}
+      
+      <div className="flex-1 ml-64 p-8">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeView + postStep}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/50 z-20 lg:hidden"
-            onClick={toggleSidebar}
-          />
-        )}
-      </AnimatePresence>
+          >
+            {activeView === 'dashboard' && renderDashboard()}
+            {activeView === 'post-offer' && renderPostOffer()}
+            {activeView === 'candidates' && renderCandidates()}
+            {activeView === 'company-profile' && renderCompanyProfile()}
+            {activeView === 'edit-offer' && renderEditOffer()}
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </div>
   )
 }
-
-export default CompanyDashboard

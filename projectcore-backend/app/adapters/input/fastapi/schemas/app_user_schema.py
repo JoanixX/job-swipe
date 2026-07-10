@@ -16,6 +16,9 @@ class AppUserCreate(BaseModel):
     main_motivation: Optional[str] = Field(None, description="Motivación principal del estudiante", example="")
     description: Optional[str] = Field(None, description="Descripción del estudiante", example="")
     ruc: Optional[str] = Field(None, description="RUC de la compañía", example="")
+    phone: Optional[str] = Field(None, description="Teléfono del usuario", example="")
+    linkedin: Optional[str] = Field(None, description="LinkedIn del usuario", example="")
+    portfolio: Optional[str] = Field(None, description="Portafolio del usuario", example="")
 
     @model_validator(mode="after")
     def check_role_fields(cls, values):
@@ -47,6 +50,9 @@ class AppUserResponse(BaseModel):
     main_motivation: Optional[str] = None
     description: Optional[str] = None
     ruc: Optional[str] = None
+    phone: Optional[str] = None
+    linkedin: Optional[str] = None
+    portfolio: Optional[str] = None
 
     class Config:
         use_enum_values = True
@@ -54,3 +60,18 @@ class AppUserResponse(BaseModel):
 class LoginCreate(BaseModel):
     email: EmailStr
     password: str
+
+class UpdatePasswordCreate(BaseModel):
+    current_password: str
+    new_password: str
+
+class AppUserUpdate(BaseModel):
+    name: Optional[str] = None
+    location: Optional[str] = None
+    phone: Optional[str] = None
+    linkedin: Optional[str] = None
+    portfolio: Optional[str] = None
+    cv_url: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    main_motivation: Optional[str] = None
+    description: Optional[str] = None

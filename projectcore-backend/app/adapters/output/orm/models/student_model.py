@@ -10,6 +10,7 @@ class StudentModel(Base):
     academic_cycle = Column(SmallInteger, nullable=False)
     weekly_availability = Column(SmallInteger, nullable=False)
     preferred_modality = Column(SmallInteger, nullable=False)
+    university = Column(String(200), nullable=True)
     embedding = Column(JSON, nullable=True)
     created_at = Column(DateTime, nullable=False, default=func.now())
     updated_at = Column(DateTime, nullable=False, default=func.now())

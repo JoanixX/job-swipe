@@ -9,6 +9,7 @@ from app.application.ports.match_job_student_port import MatchJobStudentPort
 from app.adapters.output.orm.repositories.job_offer_repository_impl import JobOfferRepositoryImpl
 from app.adapters.output.orm.repositories.student_repository_impl import StudentRepositoryImpl
 from app.adapters.output.orm.repositories.filter_match_repository_impl import FilterMatchRepositoryImpl
+from app.adapters.output.ports.filter_match_port_impl import FilterMatchPortImpl
 from app.infraestructure.ai_client.ai_connection import match_best_job_offers, match_best_students
 
 class MatchJobStudentPortImpl(MatchJobStudentPort):
@@ -37,14 +38,45 @@ class MatchJobStudentPortImpl(MatchJobStudentPort):
         return saved
 
     async def match_job_student(self, student_id: int):
+        import logging
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger(__name__)
+
         student_repo = StudentRepositoryImpl(self.session)
         student = await student_repo.find_by_id(student_id)
+        
         if not student or not student.embedding:
-            raise ValueError("El estudiante no tiene embedding disponible")
+            logger.info(f"El estudiante {student_id} no tiene embedding, intentando generarlo...")
+            filter_match_port = FilterMatchPortImpl(self.session)
+            res = await filter_match_port.preprocess_student(student_id)
+            if res and res.get("embedding"):
+                student.embedding = res.get("embedding")
+                await student_repo.update(student)
+            
+            student = await student_repo.find_by_id(student_id)
+            if not student or not student.embedding:
+                raise ValueError("El estudiante no tiene embedding disponible y no se pudo generar")
+                
         # Obtener todas las ofertas con embedding
         job_offer_repo = JobOfferRepositoryImpl(self.session)
         job_offers = await job_offer_repo.get_all()
+        
+        # Auto-generar embeddings para ofertas que no lo tienen
+        for j in job_offers:
+            if not j.embedding and j.id is not None:
+                logger.info(f"La oferta candidata {j.id} no tiene embedding, generándolo...")
+                filter_match_port = FilterMatchPortImpl(self.session)
+                res = await filter_match_port.preprocess_job_offer(j.id)
+                if res and res.get("embedding"):
+                    j.embedding = res.get("embedding")
+                    await job_offer_repo.update(j)
+                    
+        job_offers = await job_offer_repo.get_all()
         job_offers_with_embedding = [j for j in job_offers if j.embedding and j.id is not None]
+        
+        if not job_offers_with_embedding:
+            raise ValueError("No hay ofertas de trabajo con embeddings para hacer match")
+            
         job_offer_payloads = [
             {"id": j.id, "embedding": j.embedding}
             for j in job_offers_with_embedding
@@ -59,14 +91,45 @@ class MatchJobStudentPortImpl(MatchJobStudentPort):
         return ia_result
 
     async def match_student_job(self, job_offer_id: int):
+        import logging
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger(__name__)
+
         job_offer_repo = JobOfferRepositoryImpl(self.session)
         job_offer = await job_offer_repo.find_by_id(job_offer_id)
+        
         if not job_offer or not job_offer.embedding:
-            raise ValueError("La oferta no tiene embedding disponible")
+            logger.info(f"La oferta {job_offer_id} no tiene embedding, intentando generarlo...")
+            filter_match_port = FilterMatchPortImpl(self.session)
+            res = await filter_match_port.preprocess_job_offer(job_offer_id)
+            if res and res.get("embedding"):
+                job_offer.embedding = res.get("embedding")
+                await job_offer_repo.update(job_offer)
+            
+            job_offer = await job_offer_repo.find_by_id(job_offer_id)
+            if not job_offer or not job_offer.embedding:
+                raise ValueError("La oferta no tiene embedding disponible y no se pudo generar")
+                
         # Obtener todos los estudiantes con embedding
         student_repo = StudentRepositoryImpl(self.session)
         students = await student_repo.get_all()
+        
+        # Auto-generar embeddings para estudiantes que no lo tienen
+        for s in students:
+            if not s.embedding and s.id is not None:
+                logger.info(f"El estudiante candidato {s.id} no tiene embedding, generándolo...")
+                filter_match_port = FilterMatchPortImpl(self.session)
+                res = await filter_match_port.preprocess_student(s.id)
+                if res and res.get("embedding"):
+                    s.embedding = res.get("embedding")
+                    await student_repo.update(s)
+                    
+        students = await student_repo.get_all()
         students_with_embedding = [s for s in students if s.embedding and s.id is not None]
+        
+        if not students_with_embedding:
+            raise ValueError("No hay estudiantes con embeddings para hacer match")
+            
         student_payloads = [
             {"id": s.id, "embedding": s.embedding}
             for s in students_with_embedding

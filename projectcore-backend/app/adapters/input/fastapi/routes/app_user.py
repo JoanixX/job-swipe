@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.infraestructure.database.connection import get_session
 
 from app.application.factories.app_user_factory import AppUserUseCaseFactory
-from app.adapters.input.fastapi.schemas.app_user_schema import AppUserCreate, AppUserResponse, LoginCreate
+from app.adapters.input.fastapi.schemas.app_user_schema import AppUserCreate, AppUserResponse, LoginCreate, UpdatePasswordCreate, AppUserUpdate
 
 router = APIRouter()
 
@@ -56,6 +56,45 @@ async def login(credentials: LoginCreate, session: AsyncSession = Depends(get_se
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error interno del servidor: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
+
+@router.put("/user/{user_id}", response_model=AppUserResponse, tags=["App User"])
+async def update_user(user_id: int, payload: AppUserUpdate, session: AsyncSession = Depends(get_session)):
+    app_user_use_case = AppUserUseCaseFactory(session).build()
+    try:
+        app_user = await app_user_use_case.update_user(user_id, payload.dict(exclude_unset=True))
+        user_dict = app_user.__dict__.copy()
+        if hasattr(app_user, 'role') and hasattr(app_user.role, 'value'):
+            user_dict['role'] = app_user.role.value
+        return user_dict
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error interno del servidor: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
+
+@router.put("/user/{user_id}/password", tags=["App User"])
+async def update_password(user_id: int, payload: UpdatePasswordCreate, session: AsyncSession = Depends(get_session)):
+    app_user_use_case = AppUserUseCaseFactory(session).build()
+    try:
+        result = await app_user_use_case.update_password(user_id, payload.current_password, payload.new_password, session)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error interno del servidor: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
+
+@router.delete("/user/{user_id}", tags=["App User"])
+async def delete_account(user_id: int, session: AsyncSession = Depends(get_session)):
+    app_user_use_case = AppUserUseCaseFactory(session).build()
+    try:
+        result = await app_user_use_case.delete_account(user_id)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Error interno del servidor: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")

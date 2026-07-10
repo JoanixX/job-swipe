@@ -8,6 +8,9 @@ interface UserData {
   picture?: string
   userType: 'student' | 'company'
   isGoogleAuth: boolean
+  phone?: string
+  linkedin?: string
+  portfolio?: string
   profileData?: any
 }
 
@@ -76,6 +79,10 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         if (data.location) updateData.location = data.location
         if (data.main_motivation) updateData.main_motivation = data.main_motivation
         if (data.description) updateData.description = data.description
+        if (data.university) updateData.university = data.university
+        if (data.cv_url) updateData.cv_url = data.cv_url
+        if (data.skills) updateData.skills = data.skills
+        if (data.interests) updateData.interests = data.interests
         
         console.log('Updating profile with data:', updateData)
         console.log('Student ID:', user.profileData?.related_id)
