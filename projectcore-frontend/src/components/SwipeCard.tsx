@@ -6,11 +6,12 @@ interface SwipeCardProps {
   user: any;
   isTop: boolean;
   onSwipe: (direction: 'left' | 'right') => void;
+  onViewDetails?: (user: any) => void;
 }
 
-export default function SwipeCard({ user, isTop, onSwipe }: SwipeCardProps) {
+export default function SwipeCard({ user, isTop, onSwipe, onViewDetails }: SwipeCardProps) {
   const [startX, setStartX] = useState(0);
-  const [currentX, setCurrentX] = useState(0);
+  const currentXRef = useRef(0);
   const [swiping, setSwiping] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -24,7 +25,7 @@ export default function SwipeCard({ user, isTop, onSwipe }: SwipeCardProps) {
     if (!swiping) return;
     
     const currentX = e.touches[0].clientX;
-    setCurrentX(currentX);
+    currentXRef.current = currentX;
     
     const deltaX = currentX - startX;
     const rotation = deltaX / 20;
@@ -37,7 +38,7 @@ export default function SwipeCard({ user, isTop, onSwipe }: SwipeCardProps) {
   const handleTouchEnd = () => {
     if (!swiping || !cardRef.current) return;
     
-    const deltaX = currentX - startX;
+    const deltaX = currentXRef.current - startX;
     
     if (deltaX > 100) {
       cardRef.current.style.transform = `translateX(${window.innerWidth}px) rotate(30deg)`;
@@ -82,11 +83,14 @@ export default function SwipeCard({ user, isTop, onSwipe }: SwipeCardProps) {
   };
   
   return (
-    <div className="relative w-full h-[600px] flex justify-center items-center">
+    <div className="absolute inset-0 flex justify-center">
       <div
         ref={cardRef}
         className={`swipe-card absolute w-full max-w-sm h-full shadow-[0_4px_20px_rgba(0,0,0,0.08)] rounded-[32px] bg-white border border-gray-100 flex flex-col ${isTop ? 'z-10' : 'z-0 scale-95 opacity-80'}`}
-        style={{ transition: swiping ? 'none' : 'transform 0.3s ease-out' }}
+        style={{ 
+          transition: swiping ? 'none' : 'transform 0.3s ease-out',
+          willChange: 'transform' // Fix lagginess
+        }}
         onTouchStart={isTop ? handleTouchStart : undefined}
         onTouchMove={isTop ? handleTouchMove : undefined}
         onTouchEnd={isTop ? handleTouchEnd : undefined}
@@ -134,10 +138,10 @@ export default function SwipeCard({ user, isTop, onSwipe }: SwipeCardProps) {
             <div className="mb-6">
               <h4 className="text-sm font-semibold text-gray-900 mb-3">Habilidades Requeridas</h4>
               <div className="flex flex-wrap gap-2">
-                {user.interests && user.interests.length > 0 ? (
-                  user.interests.map((interest: any, idx: number) => (
-                    <span key={interest.id || idx} className="bg-[#f0edff] text-[#8c52ff] px-3 py-1 rounded-full text-xs font-medium">
-                      {interest.name}
+                {user.skills && user.skills.length > 0 ? (
+                  user.skills.map((skill: any, idx: number) => (
+                    <span key={skill.id || idx} className="bg-[#f0edff] text-[#8c52ff] px-3 py-1 rounded-full text-xs font-medium">
+                      {skill.name}
                     </span>
                   ))
                 ) : (
@@ -160,11 +164,14 @@ export default function SwipeCard({ user, isTop, onSwipe }: SwipeCardProps) {
             )}
           </div>
           
-          {/* Footer */}
           <div className="px-6 pt-2 shrink-0">
             <button 
-              onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-              className="w-full py-3 rounded-xl border-2 border-[#2e3192] text-[#2e3192] font-semibold text-sm hover:bg-[#2e3192] hover:text-white transition-colors"
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                if (onViewDetails) onViewDetails(user);
+                else setExpanded(!expanded);
+              }}
+              className="w-full py-3 bg-white border border-gray-200 text-[#2e3192] rounded-xl font-semibold text-sm hover:bg-gray-50 transition-colors"
             >
               {expanded ? 'Mostrar menos' : 'Ver Detalles Completos'}
             </button>
@@ -177,7 +184,7 @@ export default function SwipeCard({ user, isTop, onSwipe }: SwipeCardProps) {
       
       {/* Swipe Buttons (Outside Card) */}
       {isTop && (
-        <div className="absolute -bottom-20 left-0 right-0 flex justify-center space-x-6 z-20">
+        <div className="absolute -bottom-24 left-0 right-0 flex justify-center space-x-6 z-20 pointer-events-auto">
           <button 
             onClick={handleDislike}
             className="w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center border-2 border-red-100 text-red-500 hover:bg-red-50 hover:scale-105 transition-all duration-300"

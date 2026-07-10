@@ -4,6 +4,7 @@ import { queryClient } from "@/lib/queryClient";
 import SwipeCard from "@/components/SwipeCard";
 import MatchModal from "@/components/MatchModal";
 import SearchFilters from "@/components/SearchFilters";
+import JobDetailsModal from "@/components/JobDetailsModal";
 import { aiMatchingAPI, swipeAPI } from "@/services/backend-api";
 import { useUser } from "@/lib/user-context";
 import StudentAppLayout from "@/components/StudentAppLayout";
@@ -19,6 +20,7 @@ export default function MatchingPage() {
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [currentMatchedUser, setCurrentMatchedUser] = useState<Match | null>(null);
+  const [selectedJobDetails, setSelectedJobDetails] = useState<any>(null);
   
   const studentId = user?.profileData?.related_id || user?.id || 0;
   
@@ -33,14 +35,20 @@ export default function MatchingPage() {
       const liked = direction === 'right';
       return await swipeAPI.studentSwipe(swiperId, swipedId, liked);
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       if (data.mutual_match) {
-        const matchedJob = potentialMatches.find((match: any) => match.job_offer_id === swipeMutation.variables?.swipedId);
+        const matchedJob = potentialMatches.find((match: any) => match.job_offer_id === variables.swipedId);
         if (matchedJob) {
           setCurrentMatchedUser(matchedJob);
           setShowMatchModal(true);
         }
       }
+      
+      // Optimistically remove the card from the UI
+      queryClient.setQueryData(['/api/aimodel/student/best_job_offers', studentId], (oldData: any) => {
+        if (!oldData) return [];
+        return oldData.filter((match: any) => match.job_offer_id !== variables.swipedId);
+      });
       
       queryClient.invalidateQueries({ queryKey: ['/api/users', studentId, 'matches'] });
     },
@@ -98,6 +106,7 @@ export default function MatchingPage() {
                 user={match}
                 isTop={index === 0}
                 onSwipe={(direction) => handleSwipe(direction, match.job_offer_id || match.id)}
+                onViewDetails={(job) => setSelectedJobDetails(job)}
               />
             ))}
           </div>
@@ -138,9 +147,15 @@ export default function MatchingPage() {
           onApply={(filters) => {
             console.log("Filtros aplicados:", filters);
             setShowFilters(false);
-            // Here you would trigger a refetch with the new filters
-            // refetch();
           }}
+        />
+      )}
+      
+      {/* Job Details Modal */}
+      {selectedJobDetails && (
+        <JobDetailsModal 
+          job={selectedJobDetails}
+          onClose={() => setSelectedJobDetails(null)}
         />
       )}
       

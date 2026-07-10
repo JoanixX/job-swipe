@@ -32,3 +32,15 @@ class MatchJobStudentResponse(BaseModel):
     score: float
     match_date: str
     rank: int
+    
+    # Extra fields for the UI
+    title: Optional[str] = None
+    company_name: Optional[str] = None
+    description: Optional[str] = None
+    location: Optional[str] = None
+    modality: Optional[int] = None
+    salary_min: Optional[int] = None
+    salary_max: Optional[int] = None
+    approximated_salary: Optional[int] = None
+    match_score: Optional[float] = None
+    skills: Optional[list] = None

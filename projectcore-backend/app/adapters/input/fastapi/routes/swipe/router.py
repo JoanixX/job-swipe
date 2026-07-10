@@ -24,7 +24,20 @@ async def student_swipe(req: StudentSwipeRequest, session: AsyncSession = Depend
     match = result.scalars().first()
 
     if not match:
-        raise HTTPException(status_code=404, detail="AI match recommendation not found for this pair.")
+        from datetime import datetime
+        # Fallback creation
+        match = MatchJobStudentModel(
+            student_id=req.student_id,
+            job_offer_id=req.job_offer_id,
+            score=0,
+            match_date=datetime.now(),
+            rank=0,
+            student_liked=req.liked,
+            company_liked=None
+        )
+        session.add(match)
+    else:
+        match.student_liked = req.liked
 
     match.student_liked = req.liked
     await session.commit()
@@ -43,7 +56,19 @@ async def company_swipe(req: CompanySwipeRequest, session: AsyncSession = Depend
     match = result.scalars().first()
 
     if not match:
-        raise HTTPException(status_code=404, detail="AI match recommendation not found for this pair.")
+        from datetime import datetime
+        match = MatchJobStudentModel(
+            student_id=req.student_id,
+            job_offer_id=req.job_offer_id,
+            score=0,
+            match_date=datetime.now(),
+            rank=0,
+            student_liked=None,
+            company_liked=req.liked
+        )
+        session.add(match)
+    else:
+        match.company_liked = req.liked
 
     match.company_liked = req.liked
     await session.commit()
