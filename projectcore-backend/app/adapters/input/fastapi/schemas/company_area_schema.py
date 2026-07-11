@@ -1,8 +1,11 @@
 from pydantic import BaseModel, Field
 
+
 class CompanyAreaCreate(BaseModel):
-    company_id: int = Field(..., description="ID of the company")
-    area_id: int = Field(..., description="ID of the area")
+    company_id: int = Field(..., gt=0, description="ID de la compañía", )
+
+    area_id: int = Field(..., gt=0, description="ID del área", )
+
 
 class CompanyAreaResponse(BaseModel):
     company_id: int

@@ -1,26 +1,109 @@
-from pydantic import BaseModel, Field, field_validator
 from typing import Optional
-from app.adapters.input.fastapi.validators import not_empty
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+
+def validate_required_text(value: str, field_name: str) -> str:
+    value = value.strip()
+
+    if not value:
+        raise ValueError(f"{field_name} no puede estar vacío")
+
+    return value
+
+
+def validate_optional_text(
+        value: Optional[str],
+) -> Optional[str]:
+    if value is None:
+        return None
+
+    value = value.strip()
+
+    return value or None
+
 
 class CompanyCreate(BaseModel):
-    name: str = Field(..., description="Nombre de la empresa")
-    industry: str = Field(..., description="Industria de la empresa")
-    company_culture: str = Field(..., description="Cultura de la empresa")
-    contact_email: Optional[str] = Field(None, description="Email de contacto de la empresa")
-    phone: Optional[str] = Field(None, description="Teléfono de la empresa")
-    website: Optional[str] = Field(None, description="Sitio web de la empresa")
-    location: Optional[str] = Field(None, description="Dirección de la empresa")
+    model_config = ConfigDict(str_strip_whitespace=True)
 
-    @field_validator('name', 'industry', 'company_culture')
-    def not_empty_fields(cls, v, info):
-        return not_empty(v, info.field_name)
-    
+    name: str = Field(..., min_length=1, max_length=100)
+    industry: str = Field(..., min_length=1, max_length=50)
+    company_culture: str = Field(..., min_length=1, max_length=100)
+    contact_email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=20)
+    website: Optional[str] = Field(None, max_length=100)
+    location: Optional[str] = Field(None, max_length=100)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        return validate_required_text(value, "El nombre")
+
+    @field_validator("industry")
+    @classmethod
+    def validate_industry(cls, value: str) -> str:
+        return validate_required_text(value, "La industria")
+
+    @field_validator("company_culture")
+    @classmethod
+    def validate_company_culture(cls, value: str) -> str:
+        return validate_required_text(value, "La cultura empresarial")
+
+    @field_validator("phone", "website", "location")
+    @classmethod
+    def validate_optional_fields(
+            cls,
+            value: Optional[str],
+    ) -> Optional[str]:
+        return validate_optional_text(value)
+
+
+class CompanyUpdate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    industry: Optional[str] = Field(None, min_length=1, max_length=50)
+    company_culture: Optional[str] = Field(None, min_length=1, max_length=100)
+    contact_email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=20)
+    website: Optional[str] = Field(None, max_length=100)
+    location: Optional[str] = Field(None, max_length=100)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: Optional[str]) -> Optional[str]:
+        return validate_optional_text(value)
+
+    @field_validator("industry")
+    @classmethod
+    def validate_industry(cls, value: Optional[str]) -> Optional[str]:
+        return validate_optional_text(value)
+
+    @field_validator("company_culture")
+    @classmethod
+    def validate_company_culture(
+            cls,
+            value: Optional[str],
+    ) -> Optional[str]:
+        return validate_optional_text(value)
+
+    @field_validator("phone", "website", "location")
+    @classmethod
+    def validate_optional_fields(
+            cls,
+            value: Optional[str],
+    ) -> Optional[str]:
+        return validate_optional_text(value)
+
+
 class CompanyResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     industry: str
     company_culture: str
-    contact_email: Optional[str] = None
+    contact_email: Optional[EmailStr] = None
     phone: Optional[str] = None
     website: Optional[str] = None
     location: Optional[str] = None
