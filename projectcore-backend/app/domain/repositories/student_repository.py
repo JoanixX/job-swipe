@@ -1,29 +1,30 @@
 from abc import ABC, abstractmethod
+from typing import Any, Optional
+
 from app.domain.entities.student import Student
-from sqlalchemy.future import select
-from typing import Optional
+
 
 class StudentRepository(ABC):
     @abstractmethod
-    async def get_enriched_students(self, session) -> list:
-        pass
-    
+    async def get_enriched_students(self) -> list[dict[str, Any]]:
+        raise NotImplementedError
+
     @abstractmethod
-    async def save(self, student: Student):
-        pass
+    async def save(self, student: Student) -> Student:
+        raise NotImplementedError
 
     @abstractmethod
     async def find_by_id(self, student_id: int) -> Optional[Student]:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def get_all(self) -> list[Student]:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
-    async def update(self, student: Student):
-        pass
+    async def update(self, student: Student) -> Optional[Student]:
+        raise NotImplementedError
 
     @abstractmethod
-    async def delete(self, student_id: int):
-        pass
+    async def delete(self, student_id: int) -> bool:
+        raise NotImplementedError

@@ -1,145 +1,143 @@
-from sqlalchemy.future import select
-from sqlalchemy import delete
-from typing import Optional
+from datetime import datetime
+from typing import Any, Optional
 
-from app.domain.repositories.student_repository import StudentRepository
-from app.domain.entities.student import Student
-from app.adapters.output.orm.models.student_model import StudentModel
-from app.adapters.output.orm.models.student_skill_model import StudentSkillModel
-from app.adapters.output.orm.models.student_interest_model import StudentInterestModel
-from app.adapters.output.orm.models.experience_detail_model import ExperienceDetailModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.adapters.output.orm.models.app_user_model import (AppUserModel, UserRole, )
+from app.adapters.output.orm.models.experience_detail_model import (ExperienceDetailModel, )
 from app.adapters.output.orm.models.interest_model import InterestModel
 from app.adapters.output.orm.models.skill_model import SkillModel
-from app.adapters.output.orm.models.app_user_model import AppUserModel
-from app.domain.entities.app_user import UserRole
+from app.adapters.output.orm.models.student_interest_model import (StudentInterestModel, )
+from app.adapters.output.orm.models.student_model import StudentModel
+from app.adapters.output.orm.models.student_skill_model import (StudentSkillModel, )
+from app.domain.entities.student import Student
+from app.domain.repositories.student_repository import StudentRepository
+
 
 class StudentRepositoryImpl(StudentRepository):
-    def __init__(self, session):
+    def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_enriched_students(self, session) -> list:
-        students_result = await session.execute(select(StudentModel))
-        student_models = students_result.scalars().all()
-        enriched_students = []
-        for s in student_models:
-            experience_detail_links_result = await session.execute(
-                select(ExperienceDetailModel).where(ExperienceDetailModel.job_offer_id == s.id)
-            )
-            experience_detail_links = experience_detail_links_result.scalars().all()
-            experience_details = []
-            for detail in experience_detail_links:
-                experience_details.append({
-                    "name": detail.name,
-                    "description": detail.description,
-                })
-            
-            skill_links_result = await session.execute(select(StudentSkillModel).where(StudentSkillModel.student_id == s.id))
-            skill_links = skill_links_result.scalars().all()
-            skills = []
-            for link in skill_links:
-                skill_result = await session.execute(select(SkillModel).where(SkillModel.id == link.skill_id))
-                skill_obj = skill_result.scalar_one_or_none()
-                if skill_obj:
-                    skills.append({"name": skill_obj.name})
+    @staticmethod
+    def _to_entity(model: StudentModel) -> Student:
+        return Student(id=model.id, career=model.career, academic_cycle=model.academic_cycle,
+                       weekly_availability=model.weekly_availability, preferred_modality=model.preferred_modality,
+                       university=model.university, embedding=model.embedding, created_at=model.created_at,
+                       updated_at=model.updated_at, deleted_at=model.deleted_at, )
 
-            interest_links_result = await session.execute(select(StudentInterestModel).where(StudentInterestModel.student_id == s.id))
-            interest_links = interest_links_result.scalars().all()
-            interests = []
-            for link in interest_links:
-                interest_result = await session.execute(select(InterestModel).where(InterestModel.id == link.interest_id))
-                interest_obj = interest_result.scalar_one_or_none()
-                if interest_obj:
-                    interests.append({"name": interest_obj.name})
+    @staticmethod
+    def _active_filter():
+        return StudentModel.deleted_at.is_(None)
 
-            app_user_result = await session.execute(
-                select(AppUserModel).where(
-                    AppUserModel.role == UserRole.student.value,
-                    AppUserModel.related_id == s.id
-                )
-            )
-            app_user = app_user_result.scalars().first()
-            description = app_user.description if app_user else None
+    async def save(self, student: Student) -> Student:
+        model = StudentModel(career=student.career, academic_cycle=student.academic_cycle,
+                             weekly_availability=student.weekly_availability,
+                             preferred_modality=student.preferred_modality,
+                             university=student.university, embedding=student.embedding, )
 
-            enriched_students.append({
-                "id": s.id,
-                "career": s.career,
-                "experience_details": experience_details,
-                "skills": skills,
-                "interests": interests,
-                "description": description,
-            })
-        return enriched_students
-
-    async def save(self, student: Student):
-        model = StudentModel(
-            career=student.career,
-            academic_cycle=student.academic_cycle,
-            weekly_availability=student.weekly_availability,
-            preferred_modality=student.preferred_modality,
-            embedding=student.embedding
-        )
         self.session.add(model)
-        await self.session.commit()
-        await self.session.refresh(model)
-        return model
 
-    async def find_by_id(self, student_id: int) -> Optional[Student]:
-        result = await self.session.execute(select(StudentModel).where(StudentModel.id == student_id))
-        model = result.scalar_one_or_none()
-        if model:
-            return Student (
-                id=model.id,
-                career=model.career,
-                academic_cycle=model.academic_cycle,
-                weekly_availability=model.weekly_availability,
-                preferred_modality=model.preferred_modality,
-                embedding=model.embedding,
-                created_at=model.created_at,
-                updated_at=model.updated_at,
-                deleted_at=model.deleted_at
-            )
-        return None
-
-    async def get_all(self) -> list[Student]:
-        result = await self.session.execute(select(StudentModel))
-        models = result.scalars().all()
-        students = []
-        for model in models:
-            students.append(
-                Student (
-                    id=model.id,
-                    career=model.career,
-                    academic_cycle=model.academic_cycle,
-                    weekly_availability=model.weekly_availability,
-                    preferred_modality=model.preferred_modality,
-                    embedding=model.embedding,
-                    created_at=model.created_at,
-                    updated_at=model.updated_at,
-                    deleted_at=model.deleted_at
-                )
-            )
-        return students
-
-    async def update(self, student: Student) -> Optional[Student]:
-        result = await self.session.execute(select(StudentModel).where(StudentModel.id == student.id))
-        model = result.scalar_one_or_none()
-        if model:
-            model.career = student.career
-            model.academic_cycle = student.academic_cycle
-            model.weekly_availability = student.weekly_availability
-            model.preferred_modality = student.preferred_modality
-            model.embedding = student.embedding
+        try:
             await self.session.commit()
             await self.session.refresh(model)
-            return student
-        return None
+        except Exception:
+            await self.session.rollback()
+            raise
+
+        return self._to_entity(model)
+
+    async def find_by_id(self, student_id: int) -> Optional[Student]:
+        result = await self.session.execute(
+            select(StudentModel).where(StudentModel.id == student_id, self._active_filter(), ))
+
+        model = result.scalar_one_or_none()
+        return self._to_entity(model) if model else None
+
+    async def get_all(self) -> list[Student]:
+        result = await self.session.execute(
+            select(StudentModel).where(self._active_filter()).order_by(StudentModel.created_at.desc()))
+
+        models = result.scalars().all()
+        return [self._to_entity(model) for model in models]
+
+    async def update(self, student: Student) -> Optional[Student]:
+        result = await self.session.execute(
+            select(StudentModel).where(StudentModel.id == student.id, self._active_filter(), ))
+
+        model = result.scalar_one_or_none()
+
+        if model is None:
+            return None
+
+        model.career = student.career
+        model.academic_cycle = student.academic_cycle
+        model.weekly_availability = student.weekly_availability
+        model.preferred_modality = student.preferred_modality
+        model.university = student.university
+        model.embedding = student.embedding
+        model.updated_at = datetime.utcnow()
+
+        try:
+            await self.session.commit()
+            await self.session.refresh(model)
+        except Exception:
+            await self.session.rollback()
+            raise
+
+        return self._to_entity(model)
 
     async def delete(self, student_id: int) -> bool:
-        result = await self.session.execute(select(StudentModel).where(StudentModel.id == student_id))
+        result = await self.session.execute(
+            select(StudentModel).where(StudentModel.id == student_id, self._active_filter(), ))
+
         model = result.scalar_one_or_none()
-        if not model:
+
+        if model is None:
             return False
 
-        await self.session.execute(delete(StudentModel).where(StudentModel.id == student_id))
-        await self.session.commit()
+        model.deleted_at = datetime.utcnow()
+
+        try:
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
+
         return True
+
+    async def get_enriched_students(self) -> list[dict[str, Any]]:
+        result = await self.session.execute(
+            select(StudentModel).where(self._active_filter()).order_by(StudentModel.created_at.desc()))
+
+        student_models = result.scalars().all()
+        enriched_students = []
+
+        for student in student_models:
+            skills_result = await self.session.execute(
+                select(SkillModel.name).join(StudentSkillModel, StudentSkillModel.skill_id == SkillModel.id, ).where(
+                    StudentSkillModel.student_id == student.id))
+
+            interests_result = await self.session.execute(select(InterestModel.name).join(StudentInterestModel,
+                                                                                          StudentInterestModel.interest_id == InterestModel.id, ).where(
+                StudentInterestModel.student_id == student.id))
+
+            experiences_result = await self.session.execute(
+                select(ExperienceDetailModel.name, ExperienceDetailModel.description, ).where(
+                    ExperienceDetailModel.student_id == student.id, ExperienceDetailModel.deleted_at.is_(None), ))
+
+            user_result = await self.session.execute(
+                select(AppUserModel.description).where(AppUserModel.related_id == student.id,
+                                                       AppUserModel.role == UserRole.student,
+                                                       AppUserModel.deleted_at.is_(None), ))
+
+            enriched_students.append(
+                {"id": student.id, "career": student.career, "academic_cycle": student.academic_cycle,
+                 "weekly_availability": student.weekly_availability,
+                 "preferred_modality": student.preferred_modality, "university": student.university,
+                 "skills": [{"name": name} for name in skills_result.scalars().all()],
+                 "interests": [{"name": name} for name in interests_result.scalars().all()],
+                 "experience_details": [{"name": name, "description": description, } for name, description in
+                                        experiences_result.all()], "description": user_result.scalar_one_or_none(), })
+
+        return enriched_students
