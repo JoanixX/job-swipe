@@ -1,150 +1,136 @@
-import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
-import { useUser } from "@/lib/userContext";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
-import BottomNavigation from "@/components/BottomNavigation";
+import { queryClient } from "@/lib/queryClient";
 import SwipeCard from "@/components/SwipeCard";
 import MatchModal from "@/components/MatchModal";
+import SearchFilters from "@/components/SearchFilters";
+import JobDetailsModal from "@/components/JobDetailsModal";
+import { aiMatchingAPI, swipeAPI } from "@/services/backend-api";
+import { useUser } from "@/lib/user-context";
+import StudentAppLayout from "@/components/StudentAppLayout";
 
 interface Match {
   id: number;
   name: string;
   email: string;
-
 }
 
 export default function MatchingPage() {
   const { user } = useUser();
-  const [_, setLocation] = useLocation();
   const [showMatchModal, setShowMatchModal] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [currentMatchedUser, setCurrentMatchedUser] = useState<Match | null>(null);
+  const [selectedJobDetails, setSelectedJobDetails] = useState<any>(null);
   
-  const { data: potentialMatches = [], isLoading, refetch } = useQuery<Match[]>({
-    queryKey: ['/api/users', user?.id, 'potential-matches'],
-    enabled: !!user?.id,
+  const studentId = user?.profileData?.related_id || user?.id || 0;
+  
+  const { data: potentialMatches = [], isLoading, refetch } = useQuery<any[]>({
+    queryKey: ['/api/aimodel/student/best_job_offers', studentId],
+    queryFn: () => aiMatchingAPI.getBestJobsForStudent(studentId),
+    enabled: !!studentId,
   });
   
   const swipeMutation = useMutation({
-    mutationFn: async ({ swiperId, swipedId, direction }: { swiperId: number, swipedId: number, direction: string }) => {
-      /*
-      const res = await apiRequest('POST', '/api/swipes', { swiperId, swipedId, direction });
-      
-      const contentType = res.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        return await res.json();
-      } else {
-        console.warn('La respuesta swipe no es JSON');
-        return { 
-          match: true, 
-          swipe: { 
-            id: 1, 
-            swiperId: swiperId, 
-            swipedId: swipedId,
-            direction: direction,
-            createdAt: new Date().toISOString() 
-          }
-        };
-      }
-      */
-      return { 
-        match: true, 
-        swipe: { 
-          id: 1, 
-          swiperId: swiperId, 
-          swipedId: swipedId,
-          direction: direction,
-          createdAt: new Date().toISOString() 
-        }
-      };
+    mutationFn: async ({ swiperId, swipedId, direction }: { swiperId: number, swipedId: number, direction: 'left' | 'right' }) => {
+      const liked = direction === 'right';
+      return await swipeAPI.studentSwipe(swiperId, swipedId, liked);
     },
-    onSuccess: (data) => {
-      if (data.match) {
-        // Find the matched user from potentialMatches
-        const matchedUser = potentialMatches.find((match: Match) => match.id === data.swipe.swipedId);
-        if (matchedUser) {
-          setCurrentMatchedUser(matchedUser);
+    onSuccess: (data, variables) => {
+      if (data.mutual_match) {
+        const matchedJob = potentialMatches.find((match: any) => match.job_offer_id === variables.swipedId);
+        if (matchedJob) {
+          setCurrentMatchedUser(matchedJob);
           setShowMatchModal(true);
         }
       }
       
-      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'matches'] });
+      // Optimistically remove the card from the UI
+      queryClient.setQueryData(['/api/aimodel/student/best_job_offers', studentId], (oldData: any) => {
+        if (!oldData) return [];
+        return oldData.filter((match: any) => match.job_offer_id !== variables.swipedId);
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/users', studentId, 'matches'] });
     },
   });
   
   const handleSwipe = (direction: 'left' | 'right', swipedId: number) => {
-    if (!user) return;
+    if (!studentId) return;
     
     swipeMutation.mutate({
-      swiperId: user.id,
+      swiperId: studentId,
       swipedId,
       direction: direction === 'right' ? 'right' : 'left',
     });
   };
   
-  const goBack = () => {
-    setLocation("/home");
-  };
-  
   return (
-    <div className="min-h-screen flex flex-col bg-black relative overflow-hidden">
-      {/* Fondo galáctico */}
-      <div className="fixed inset-0 bg-black">
-        <div className="absolute inset-0 bg-gradient-to-b from-black via-purple-900/10 to-black" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(139,92,246,0.05),transparent_50%)]" />
-      </div>
+    <StudentAppLayout activePage="inicio">
       
-      <div className="relative z-10 py-4 px-6 flex items-center justify-between border-b border-purple-500/20 bg-black/50 backdrop-blur-sm">
+      {/* Top Header */}
+      <div className="py-4 px-6 flex items-center justify-between bg-white sticky top-0 z-20">
+        <div className="flex flex-col">
+          <h1 className="text-xl font-bold text-[#2e3192]">JobSwipe</h1>
+        </div>
         <button 
-          onClick={goBack}
-          className="w-10 h-10 rounded-lg flex items-center justify-center border border-purple-500/30 bg-black/50 backdrop-blur-sm hover:bg-purple-500/20 transition-colors"
+          onClick={() => setShowFilters(true)}
+          className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-50 border border-gray-100 hover:bg-gray-100 transition-colors"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m15 18-6-6 6-6"/>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="4" y1="21" x2="4" y2="14"></line>
+            <line x1="4" y1="10" x2="4" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12" y2="3"></line>
+            <line x1="20" y1="21" x2="20" y2="16"></line>
+            <line x1="20" y1="12" x2="20" y2="3"></line>
+            <line x1="1" y1="14" x2="7" y2="14"></line>
+            <line x1="9" y1="8" x2="15" y2="8"></line>
+            <line x1="17" y1="16" x2="23" y2="16"></line>
           </svg>
         </button>
-        <h1 className="text-xl font-semibold text-white drop-shadow-[0_2px_16px_rgba(139,92,246,0.7)]">Descubrir</h1>
-        <div className="w-10"></div>
       </div>
       
-      {/* Cards container */}
-      <div className="flex-1 flex items-center justify-center p-6 relative z-10">
+      {/* Main Swipe Area */}
+      <div className="flex-1 flex flex-col items-center justify-start pt-4 px-6 relative min-h-[700px]">
         {isLoading ? (
-          <div className="flex flex-col items-center">
-            <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mb-4"></div>
-            <p className="text-gray-300">Cargando perfiles...</p>
+          <div className="flex flex-col items-center justify-center h-64 mt-20">
+            <div className="w-12 h-12 border-4 border-[#2e3192]/20 border-t-[#2e3192] rounded-full animate-spin mb-4"></div>
+            <p className="text-gray-500 font-medium">Buscando oportunidades...</p>
           </div>
         ) : potentialMatches.length > 0 ? (
-          <div className="w-full max-w-sm relative">
-            {potentialMatches.map((match: Match, index: number) => (
+          <div className="w-full relative h-[600px] mb-24">
+            {potentialMatches
+              .map((match: any, index: number) => (
               <SwipeCard 
-                key={match.id}
+                key={match.id || match.job_offer_id}
                 user={match}
                 isTop={index === 0}
-                onSwipe={(direction) => handleSwipe(direction, match.id)}
+                onSwipe={(direction) => handleSwipe(direction, match.job_offer_id || match.id)}
+                onViewDetails={(job) => setSelectedJobDetails(job)}
               />
             ))}
           </div>
         ) : (
-          <div className="text-center p-6 border border-dashed border-purple-500/30 rounded-xl bg-black/40 backdrop-blur-md">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-purple-400 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="12"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-            <h3 className="text-xl font-semibold mb-2 text-white">No hay más perfiles</h3>
-            <p className="text-gray-300 mb-4">En este momento no hay más perfiles para mostrar. Vuelve a intentarlo más tarde.</p>
+          <div className="text-center p-8 mt-12 bg-white rounded-3xl border border-gray-100 shadow-sm max-w-sm w-full mx-4">
+            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M16 16s-1.5-2-4-2-4 2-4 2"></path>
+                <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                <line x1="15" y1="9" x2="15.01" y2="9"></line>
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold mb-3 text-gray-900">No hay más ofertas</h3>
+            <p className="text-gray-500 text-sm mb-8 leading-relaxed">Hemos buscado en toda nuestra base de datos, pero en este momento no hay más ofertas para tu perfil.</p>
             <button 
               onClick={() => refetch()}
-              className="py-2 px-4 bg-gradient-to-r from-violet-500 to-fuchsia-600 hover:from-fuchsia-600 hover:to-violet-700 text-white rounded-lg font-medium shadow-lg shadow-purple-500/30 transition-all duration-300"
+              className="w-full py-4 bg-[#2e3192] hover:bg-[#1a1c5b] text-white rounded-xl font-bold shadow-lg shadow-blue-900/20 transition-all duration-300"
             >
-              Actualizar
+              Volver a buscar
             </button>
           </div>
         )}
       </div>
-      
-      <BottomNavigation activePage="matching" />
       
       {/* Match Modal */}
       {showMatchModal && currentMatchedUser && (
@@ -153,6 +139,26 @@ export default function MatchingPage() {
           onClose={() => setShowMatchModal(false)} 
         />
       )}
-    </div>
+
+      {/* Filters Modal */}
+      {showFilters && (
+        <SearchFilters 
+          onClose={() => setShowFilters(false)}
+          onApply={(filters) => {
+            console.log("Filtros aplicados:", filters);
+            setShowFilters(false);
+          }}
+        />
+      )}
+      
+      {/* Job Details Modal */}
+      {selectedJobDetails && (
+        <JobDetailsModal 
+          job={selectedJobDetails}
+          onClose={() => setSelectedJobDetails(null)}
+        />
+      )}
+      
+    </StudentAppLayout>
   );
 }

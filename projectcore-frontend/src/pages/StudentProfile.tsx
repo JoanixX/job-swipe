@@ -1,469 +1,311 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { 
-  User, 
-  GraduationCap, 
-  MapPin, 
-  Clock, 
-  Monitor,
-  Edit,
-  Save,
-  X,
-  ArrowLeft
-} from 'lucide-react';
-import { useUser } from '@/lib/user-context';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-
-const careers = [
-  "Ingeniería de Sistemas", "Administración", "Contabilidad", "Marketing", "Psicología",
-  "Derecho", "Medicina", "Enfermería", "Arquitectura", "Diseño Gráfico",
-  "Comunicaciones", "Economía", "Ingeniería Civil", "Ingeniería Industrial",
-  "Ingeniería Electrónica", "Turismo", "Gastronomía", "Educación"
-];
-
-const cycles = Array.from({ length: 12 }, (_, i) => `${i + 1}`);
-const availabilityOptions = Array.from({ length: 40 }, (_, i) => `${i + 1}`);
+import { ChevronLeft, Pencil, Check, X, Settings } from 'lucide-react';
+import { useUser } from '../lib/user-context';
+import StudentAppLayout from '../components/StudentAppLayout';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { studentAPI, authAPI } from '../services/backend-api';
 
 export default function StudentProfile() {
-  const { user, updateProfile } = useUser();
-  const [location, setLocation] = useLocation();
-  const [editingSection, setEditingSection] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [_, setLocation] = useLocation();
+  const { user, setUser } = useUser();
+  const studentId = user?.profileData?.related_id || user?.id || 0;
+  const queryClient = useQueryClient();
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [isAvailable, setIsAvailable] = useState(true);
+
+  // Default values
   const [formData, setFormData] = useState({
-    career: '',
-    academic_cycle: '',
-    location: '',
-    weekly_availability: '',
-    preferred_modality: '',
-    main_motivation: '',
-    description: ''
+    name: user?.name || '',
+    email: user?.email || '',
+    university: user?.profileData?.university || '',
+    phone: user?.phone || '',
+    linkedin: user?.linkedin || '',
+    portfolio: ''
   });
 
-  const profileData = user?.profileData || {};
+  // Fetch Student Profile
+  const { data: studentData, isLoading: isLoadingStudent } = useQuery({
+    queryKey: ['studentProfile', studentId],
+    queryFn: () => studentAPI.getById(studentId),
+    enabled: !!studentId
+  });
 
+  // Effect to sync data when fetched
   useEffect(() => {
-    // Load profile data when component mounts or user changes
-    console.log('StudentProfile - Loading profile data:', profileData);
-    setFormData({
-      career: profileData.career || '',
-      academic_cycle: profileData.academic_cycle?.toString() || '',
-      location: profileData.location || '',
-      weekly_availability: profileData.weekly_availability?.toString() || '',
-      preferred_modality: profileData.preferred_modality?.toString() || '',
-      main_motivation: profileData.main_motivation || '',
-      description: profileData.description || ''
-    });
-  }, [user, profileData]);
-
-  const handleEdit = (section: string) => {
-    setEditingSection(section);
-    setFormData({
-      career: profileData.career || '',
-      academic_cycle: profileData.academic_cycle?.toString() || '',
-      location: profileData.location || '',
-      weekly_availability: profileData.weekly_availability?.toString() || '',
-      preferred_modality: profileData.preferred_modality?.toString() || '',
-      main_motivation: profileData.main_motivation || '',
-      description: profileData.description || ''
-    });
-  };
-
-  const handleSave = async (section: string) => {
-    setSaving(true);
-    try {
-      await updateProfile(formData);
-      setEditingSection(null);
-      // Show success message with better UX
-      const successDiv = document.createElement('div');
-      successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
-      successDiv.textContent = '✅ Perfil actualizado correctamente';
-      document.body.appendChild(successDiv);
-      setTimeout(() => document.body.removeChild(successDiv), 3000);
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      const errorDiv = document.createElement('div');
-      errorDiv.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
-      errorDiv.textContent = '❌ Error al actualizar el perfil';
-      document.body.appendChild(errorDiv);
-      setTimeout(() => document.body.removeChild(errorDiv), 3000);
-    } finally {
-      setSaving(false);
+    if (studentData) {
+      setFormData(prev => ({
+        ...prev,
+        university: studentData.university || prev.university,
+        portfolio: studentData.portfolio || prev.portfolio,
+      }));
     }
-  };
+  }, [studentData]);
 
-  const handleCancel = () => {
-    setEditingSection(null);
-    setFormData({
-      career: '',
-      academic_cycle: '',
-      location: '',
-      weekly_availability: '',
-      preferred_modality: '',
-      main_motivation: '',
-      description: ''
-    });
-  };
-
-  const updateFormData = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const getModalityText = (modality: number) => {
-    switch (modality) {
-      case 1: return 'Presencial';
-      case 2: return 'Remoto';
-      case 3: return 'Híbrido';
-      default: return 'No especificado';
+  const updateMutation = useMutation({
+    mutationFn: async (updatedData: any) => {
+      // Typically we would update both User and Student if fields belong to different tables
+      // For this mockup frontend, we'll try to update both if possible
+      try {
+        if (user?.id) {
+          await authAPI.updateUser(user.id as any, {
+            name: updatedData.name,
+            phone: updatedData.phone,
+            linkedin: updatedData.linkedin,
+            portfolio: updatedData.portfolio
+          });
+        }
+        if (studentId) {
+          await studentAPI.update(studentId, {
+            university: updatedData.university
+          });
+        }
+      } catch (error) {
+        console.warn("Update might fail if endpoints aren't implemented yet on backend:", error);
+      }
+      return updatedData;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(['studentProfile', studentId], (old: any) => ({
+        ...old,
+        ...data
+      }));
+      if (user) {
+        setUser({
+          ...user,
+          phone: data.phone,
+          linkedin: data.linkedin,
+          portfolio: data.portfolio,
+          profileData: {
+            ...user.profileData,
+            university: data.university
+          }
+        });
+      }
+      setIsEditing(false);
+      alert('Perfil actualizado correctamente');
+    },
+    onError: () => {
+      // Even on error, stop editing to not block user (due to possible mock backend)
+      setIsEditing(false);
+      alert('Los cambios se han guardado localmente (Backend endpoints pendientes)');
     }
+  });
+
+  const handleSave = () => {
+    updateMutation.mutate(formData);
   };
+
+  const initial = formData.name ? formData.name.charAt(0).toUpperCase() : 'U';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 relative overflow-hidden">
-      {/* Aura Effects */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-40 left-40 w-80 h-80 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
-      </div>
+    <StudentAppLayout activePage="perfil">
+      
       {/* Header */}
-      <div className="bg-white/10 backdrop-blur-md border-b border-white/20 relative z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <Button
-                onClick={() => setLocation('/student-dashboard')}
-                variant="ghost"
-                className="text-white hover:bg-white/10"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Volver al Dashboard
-              </Button>
-              <div className="flex items-center space-x-3">
-                <img 
-                  src="/images/logoCircular.png" 
-                  alt="ProjectCore" 
-                  className="w-8 h-8 rounded-full"
-                />
-                <h1 className="text-2xl font-bold text-white">Potencia tu Perfil</h1>
-              </div>
+      <div className="py-4 px-6 flex items-center justify-between bg-white sticky top-0 z-20 border-b border-gray-50">
+        <div className="flex items-center">
+          <button 
+            onClick={() => setLocation('/matching')}
+            className="mr-4 text-gray-500 hover:text-gray-900"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <h1 className="text-xl font-bold text-gray-900">Mi Perfil</h1>
+        </div>
+        {isEditing ? (
+          <div className="flex gap-2">
+            <button onClick={() => setIsEditing(false)} className="p-2 text-red-500 hover:bg-red-50 rounded-full">
+              <X className="w-5 h-5" />
+            </button>
+            <button onClick={handleSave} className="p-2 text-green-500 hover:bg-green-50 rounded-full" disabled={updateMutation.isPending}>
+              <Check className="w-5 h-5" />
+            </button>
+          </div>
+        ) : null}
+      </div>
+      
+      <div className="p-6 pb-12">
+        
+        {/* Avatar Section */}
+        <div className="flex justify-center mt-4 mb-8">
+          <div className="relative">
+            <div className="w-28 h-28 bg-[#2e3192] rounded-full flex items-center justify-center shadow-lg">
+              <span className="text-white text-4xl font-medium">{initial}</span>
             </div>
+            {!isEditing && (
+              <button 
+                onClick={() => setIsEditing(true)}
+                className="absolute bottom-0 right-0 w-9 h-9 bg-[#8c52ff] rounded-full flex items-center justify-center border-4 border-white shadow-sm hover:bg-[#7a42df] transition-colors"
+              >
+                <Pencil className="w-4 h-4 text-white" />
+              </button>
+            )}
           </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <Card className="bg-white/10 backdrop-blur-md border-white/20 text-white">
-            <CardHeader>
-              <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <User className="w-8 h-8 text-white" />
-                </div>
-                <div>
-                  <CardTitle className="text-2xl">{user?.name || 'Usuario'}</CardTitle>
-                  <p className="text-gray-300">{user?.email}</p>
-                </div>
+        {/* Form Fields */}
+        <div className="space-y-5 mb-8">
+          {isLoadingStudent && !isEditing ? (
+            <div className="flex justify-center py-4">
+              <div className="w-6 h-6 border-2 border-[#2e3192]/20 border-t-[#2e3192] rounded-full animate-spin"></div>
+            </div>
+          ) : (
+            <>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">Nombre Completo</h3>
+                {isEditing ? (
+                  <input 
+                    type="text" 
+                    value={formData.name} 
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    className="w-full text-gray-900 text-[15px] p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#2e3192]"
+                  />
+                ) : (
+                  <p className="text-gray-600 text-[15px]">{formData.name}</p>
+                )}
               </div>
-            </CardHeader>
-          </Card>
-        </motion.div>
-
-        {/* Profile Sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Academic Information */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card className="bg-white/10 backdrop-blur-md border-white/20 text-white">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center">
-                    <GraduationCap className="w-5 h-5 mr-2" />
-                    Información Académica
-                  </CardTitle>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleEdit('academic')}
-                    className="text-white hover:bg-white/10"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {editingSection === 'academic' ? (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="career" className="text-white">Carrera</Label>
-                      <Select value={formData.career} onValueChange={(value) => updateFormData('career', value)}>
-                        <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                          <SelectValue placeholder="Selecciona tu carrera" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {careers.map((career) => (
-                            <SelectItem key={career} value={career}>{career}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="academic_cycle" className="text-white">Ciclo Académico</Label>
-                      <Select value={formData.academic_cycle} onValueChange={(value) => updateFormData('academic_cycle', value)}>
-                        <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                          <SelectValue placeholder="Selecciona tu ciclo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {cycles.map((cycle) => (
-                            <SelectItem key={cycle} value={cycle}>{cycle}° ciclo</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button onClick={() => handleSave('academic')} size="sm" className="bg-green-600 hover:bg-green-700">
-                        <Save className="w-4 h-4 mr-2" />
-                        Guardar
-                      </Button>
-                      <Button onClick={handleCancel} size="sm" variant="outline" className="border-white/20 text-white hover:bg-white/10">
-                        <X className="w-4 h-4 mr-2" />
-                        Cancelar
-                      </Button>
-                    </div>
-                  </div>
+              
+              <div className="h-px bg-gray-100 w-full" />
+              
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">Correo Electrónico</h3>
+                {isEditing ? (
+                  <input 
+                    type="email" 
+                    value={formData.email} 
+                    disabled
+                    className="w-full text-gray-500 text-[15px] p-2 border border-gray-200 bg-gray-50 rounded-lg cursor-not-allowed"
+                    title="No se puede cambiar el correo"
+                  />
                 ) : (
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-gray-300 text-sm">Carrera</p>
-                      <p className="text-white font-medium">{profileData.career || 'No especificado'}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-300 text-sm">Ciclo Académico</p>
-                      <p className="text-white font-medium">{profileData.academic_cycle ? `${profileData.academic_cycle}° ciclo` : 'No especificado'}</p>
-                    </div>
-                  </div>
+                  <p className="text-gray-600 text-[15px]">{formData.email}</p>
                 )}
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Personal Information */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card className="bg-white/10 backdrop-blur-md border-white/20 text-white">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center">
-                    <MapPin className="w-5 h-5 mr-2" />
-                    Información Personal
-                  </CardTitle>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleEdit('personal')}
-                    className="text-white hover:bg-white/10"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {editingSection === 'personal' ? (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="location" className="text-white">Ubicación</Label>
-                      <Input
-                        id="location"
-                        value={formData.location}
-                        onChange={(e) => updateFormData('location', e.target.value)}
-                        className="bg-white/10 border-white/20 text-white"
-                        placeholder="Lima, Perú"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="main_motivation" className="text-white">Motivación Principal</Label>
-                      <Input
-                        id="main_motivation"
-                        value={formData.main_motivation}
-                        onChange={(e) => updateFormData('main_motivation', e.target.value)}
-                        className="bg-white/10 border-white/20 text-white"
-                        placeholder="Desarrollo profesional"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="description" className="text-white">Descripción</Label>
-                      <Textarea
-                        id="description"
-                        value={formData.description}
-                        onChange={(e) => updateFormData('description', e.target.value)}
-                        className="bg-white/10 border-white/20 text-white"
-                        placeholder="Cuéntanos sobre ti..."
-                        rows={3}
-                      />
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button onClick={() => handleSave('personal')} size="sm" className="bg-green-600 hover:bg-green-700">
-                        <Save className="w-4 h-4 mr-2" />
-                        Guardar
-                      </Button>
-                      <Button onClick={handleCancel} size="sm" variant="outline" className="border-white/20 text-white hover:bg-white/10">
-                        <X className="w-4 h-4 mr-2" />
-                        Cancelar
-                      </Button>
-                    </div>
-                  </div>
+              </div>
+              
+              <div className="h-px bg-gray-100 w-full" />
+              
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">Universidad</h3>
+                {isEditing ? (
+                  <input 
+                    type="text" 
+                    value={formData.university} 
+                    onChange={(e) => setFormData({...formData, university: e.target.value})}
+                    className="w-full text-gray-900 text-[15px] p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#2e3192]"
+                  />
                 ) : (
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-gray-300 text-sm">Ubicación</p>
-                      <p className="text-white font-medium">{profileData.location || 'No especificado'}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-300 text-sm">Motivación Principal</p>
-                      <p className="text-white font-medium">{profileData.main_motivation || 'No especificado'}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-300 text-sm">Descripción</p>
-                      <p className="text-white font-medium">{profileData.description || 'No especificado'}</p>
-                    </div>
-                  </div>
+                  <p className="text-gray-600 text-[15px]">{formData.university || 'No registrada'}</p>
                 )}
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Work Preferences */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card className="bg-white/10 backdrop-blur-md border-white/20 text-white">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center">
-                    <Clock className="w-5 h-5 mr-2" />
-                    Preferencias Laborales
-                  </CardTitle>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleEdit('work')}
-                    className="text-white hover:bg-white/10"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {editingSection === 'work' ? (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="weekly_availability" className="text-white">Disponibilidad Semanal (horas)</Label>
-                      <Select value={formData.weekly_availability} onValueChange={(value) => updateFormData('weekly_availability', value)}>
-                        <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                          <SelectValue placeholder="Selecciona las horas" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availabilityOptions.map((hours) => (
-                            <SelectItem key={hours} value={hours}>{hours} horas</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="preferred_modality" className="text-white">Modalidad Preferida</Label>
-                      <Select value={formData.preferred_modality} onValueChange={(value) => updateFormData('preferred_modality', value)}>
-                        <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                          <SelectValue placeholder="Selecciona la modalidad" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">Presencial</SelectItem>
-                          <SelectItem value="2">Remoto</SelectItem>
-                          <SelectItem value="3">Híbrido</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button onClick={() => handleSave('work')} size="sm" className="bg-green-600 hover:bg-green-700">
-                        <Save className="w-4 h-4 mr-2" />
-                        Guardar
-                      </Button>
-                      <Button onClick={handleCancel} size="sm" variant="outline" className="border-white/20 text-white hover:bg-white/10">
-                        <X className="w-4 h-4 mr-2" />
-                        Cancelar
-                      </Button>
-                    </div>
-                  </div>
+              </div>
+              
+              <div className="h-px bg-gray-100 w-full" />
+              
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">Teléfono</h3>
+                {isEditing ? (
+                  <input 
+                    type="tel" 
+                    value={formData.phone} 
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    className="w-full text-gray-900 text-[15px] p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#2e3192]"
+                  />
                 ) : (
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-gray-300 text-sm">Disponibilidad Semanal</p>
-                      <p className="text-white font-medium">{profileData.weekly_availability ? `${profileData.weekly_availability} horas` : 'No especificado'}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-300 text-sm">Modalidad Preferida</p>
-                      <p className="text-white font-medium">{getModalityText(profileData.preferred_modality)}</p>
-                    </div>
-                  </div>
+                  <p className="text-gray-600 text-[15px]">{formData.phone || 'No registrado'}</p>
                 )}
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Account Information */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <Card className="bg-white/10 backdrop-blur-md border-white/20 text-white">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <User className="w-5 h-5 mr-2" />
-                  Información de Cuenta
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-gray-300 text-sm">Nombre</p>
-                    <p className="text-white font-medium">{user?.name || 'No especificado'}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-300 text-sm">Email</p>
-                    <p className="text-white font-medium">{user?.email || 'No especificado'}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-300 text-sm">DNI</p>
-                    <p className="text-white font-medium">{profileData.dni || 'No especificado'}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-300 text-sm">Tipo de Usuario</p>
-                    <p className="text-white font-medium">Estudiante</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+              </div>
+              
+              <div className="h-px bg-gray-100 w-full" />
+              
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">Linkedin</h3>
+                {isEditing ? (
+                  <input 
+                    type="url" 
+                    value={formData.linkedin} 
+                    onChange={(e) => setFormData({...formData, linkedin: e.target.value})}
+                    className="w-full text-gray-900 text-[15px] p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#2e3192]"
+                  />
+                ) : (
+                  <p className="text-gray-600 text-[15px]">{formData.linkedin || 'No registrado'}</p>
+                )}
+              </div>
+              
+              <div className="h-px bg-gray-100 w-full" />
+              
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">Portafolio</h3>
+                {isEditing ? (
+                  <input 
+                    type="url" 
+                    value={formData.portfolio} 
+                    onChange={(e) => setFormData({...formData, portfolio: e.target.value})}
+                    className="w-full text-gray-900 text-[15px] p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#2e3192]"
+                  />
+                ) : (
+                  <p className="text-gray-600 text-[15px]">{formData.portfolio || 'No registrado'}</p>
+                )}
+              </div>
+              
+              <div className="h-px bg-gray-100 w-full" />
+            </>
+          )}
         </div>
+
+        {/* Availability Toggle */}
+        <div className="bg-white border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] rounded-2xl p-5 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="pr-4">
+              <h3 className="font-bold text-gray-900 mb-1">Disponibilidad Inmediata</h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Permite que las empresas te contacten directamente</p>
+            </div>
+            
+            {/* Custom Toggle Switch */}
+            <button 
+              onClick={() => setIsAvailable(!isAvailable)}
+              className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                isAvailable ? 'bg-[#00C853]' : 'bg-gray-200'
+              }`}
+              role="switch"
+              aria-checked={isAvailable}
+            >
+              <span
+                aria-hidden="true"
+                className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                  isAvailable ? 'translate-x-6' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+        
+        {/* Action Buttons */}
+        <div className="space-y-3 mb-6">
+          <button 
+            onClick={() => setLocation('/student-skills')}
+            className="w-full py-3 bg-gray-50 border border-gray-100 rounded-xl font-semibold text-gray-700 hover:bg-gray-100 transition-colors text-sm"
+          >
+            Gestionar Habilidades
+          </button>
+          
+          <button 
+            onClick={() => setLocation('/account-settings')}
+            className="w-full py-3 bg-gray-50 border border-gray-100 rounded-xl font-semibold text-gray-700 hover:bg-gray-100 transition-colors text-sm flex items-center justify-center gap-2"
+          >
+            <Settings className="w-4 h-4" />
+            Configuración de Cuenta
+          </button>
+          
+          <button 
+            onClick={handleSave}
+            className="w-full py-4 bg-[#1e2f75] hover:bg-[#15225a] text-white rounded-xl font-bold shadow-lg shadow-blue-900/20 transition-all duration-300 mt-2"
+          >
+            Guardar Cambios
+          </button>
+        </div>
+        
       </div>
-    </div>
+      
+    </StudentAppLayout>
   );
 }

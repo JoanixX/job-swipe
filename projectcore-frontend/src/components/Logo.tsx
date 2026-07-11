@@ -21,7 +21,7 @@ export default function Logo({ size = 'md', color = '#8A4EFC', showText = true }
       <div className="relative">
         <img
           src="/images/logoCircular.png"
-          alt="ProjectCore Logo"
+          alt="JobSwipe Logo"
           width={width}
           height={height}
           className="animate-pulse rounded-full"
@@ -32,10 +32,10 @@ export default function Logo({ size = 'md', color = '#8A4EFC', showText = true }
       {showText && (
         <div className="flex items-center">
           <span className={`font-extrabold ${size === 'sm' ? 'text-xl' : size === 'md' ? 'text-2xl' : size === 'lg' ? 'text-3xl' : 'text-4xl'} text-white`}>
-            CHAMBEA
+            Job
           </span>
-          <span className={`font-extrabold ml-1 ${size === 'sm' ? 'text-xl' : size === 'md' ? 'text-2xl' : size === 'lg' ? 'text-3xl' : 'text-4xl'} text-yellow-500`}>
-            YA
+          <span className={`font-extrabold ${size === 'sm' ? 'text-xl' : size === 'md' ? 'text-2xl' : size === 'lg' ? 'text-3xl' : 'text-4xl'} text-[#FF655B]`}>
+            Swipe
           </span>
         </div>
       )}

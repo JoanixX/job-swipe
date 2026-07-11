@@ -10,3 +10,5 @@ uvicorn
 email-validator
 sentence_transformers
 python-dotenv
+PyPDF2
+python-multipart

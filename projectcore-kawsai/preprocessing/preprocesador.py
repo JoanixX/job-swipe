@@ -10,7 +10,7 @@ from sentence_transformers import SentenceTransformer
 
 class Preprocesador:
     def __init__(self):
-        self.modelo_embedding = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+        self.modelo_embedding = SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
         self.nlp = spacy.load("es_core_news_sm")
 
     def crear_perfil_textual(self, text):

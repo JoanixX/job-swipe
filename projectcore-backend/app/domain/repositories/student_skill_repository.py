@@ -1,20 +1,22 @@
 from abc import ABC, abstractmethod
 from typing import List
+
 from app.domain.entities.student_skill import StudentSkill
+
 
 class StudentSkillRepository(ABC):
     @abstractmethod
-    def get_by_student_id(self, student_id: int) -> List[StudentSkill]:
-        pass
+    async def get_by_student_id(self, student_id: int, ) -> List[StudentSkill]:
+        raise NotImplementedError
 
     @abstractmethod
-    def exists(self, student_id: int, skill_id: int) -> bool:
-        pass
+    async def exists(self, student_id: int, skill_id: int, ) -> bool:
+        raise NotImplementedError
 
     @abstractmethod
-    def save(self, student_skill: StudentSkill) -> StudentSkill:
-        pass
+    async def save(self, student_skill: StudentSkill, ) -> StudentSkill:
+        raise NotImplementedError
 
     @abstractmethod
-    def delete(self, student_id: int, skill_id: int) -> None:
-        pass
+    async def delete(self, student_id: int, skill_id: int, ) -> bool:
+        raise NotImplementedError

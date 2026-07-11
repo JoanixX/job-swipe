@@ -1,57 +1,83 @@
-from sqlalchemy.future import select
-from sqlalchemy import delete
 from typing import Optional
+
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.adapters.output.orm.models.interest_model import InterestModel
 from app.domain.entities.interest import Interest
 from app.domain.repositories.interest_repository import InterestRepository
 
+
 class InterestRepositoryImpl(InterestRepository):
-    def __init__(self, session):
+    def __init__(self, session: AsyncSession):
         self.session = session
-    
-    async def save(self, interest: Interest):
-        model = InterestModel(
-            name=interest.name
+
+    @staticmethod
+    def _to_entity(model: InterestModel) -> Interest:
+        return Interest(
+            id=model.id,
+            name=model.name,
         )
+
+    async def save(self, interest: Interest) -> Interest:
+        model = InterestModel(name=interest.name)
         self.session.add(model)
-        await self.session.commit()
-        await self.session.refresh(model)
-        return model
-    
+
+        try:
+            await self.session.commit()
+            await self.session.refresh(model)
+        except Exception:
+            await self.session.rollback()
+            raise
+
+        return self._to_entity(model)
+
     async def find_by_id(self, interest_id: int) -> Optional[Interest]:
-        result = await self.session.execute(select(InterestModel).where(InterestModel.id == interest_id))
-        model = result.scalar_one_or_none()
-        if model:
-            return Interest(
-                id=model.id,
-                name=model.name
+        result = await self.session.execute(
+            select(InterestModel).where(
+                InterestModel.id == interest_id
             )
-        return None
-    
+        )
+
+        model = result.scalar_one_or_none()
+        return self._to_entity(model) if model else None
+
     async def get_all(self) -> list[Interest]:
-        result = await self.session.execute(select(InterestModel))
-        models = result.scalars().all()
-        interests = []
-        for model in models:
-            interests.append(
-                Interest(
-                    id=model.id,
-                    name=model.name
-                )
-            )
-        return interests
-    
+        result = await self.session.execute(
+            select(InterestModel).order_by(InterestModel.name)
+        )
+
+        return [
+            self._to_entity(model)
+            for model in result.scalars().all()
+        ]
+
     async def delete(self, interest_id: int) -> bool:
-        result = await self.session.execute(select(InterestModel).where(InterestModel.id == interest_id))
-        model = result.scalar_one_or_none()
-        if not model:
+        result = await self.session.execute(
+            delete(InterestModel).where(
+                InterestModel.id == interest_id
+            )
+        )
+
+        if result.rowcount == 0:
             return False
 
-        await self.session.execute(delete(InterestModel).where(InterestModel.id == interest_id))
-        await self.session.commit()
+        try:
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
+
         return True
-    
-    async def get_name_by_id(self, interest_id: int) -> Optional[str]:
-        result = await self.session.execute(select(InterestModel.name).where(InterestModel.id == interest_id))
-        name = result.scalar_one_or_none()
-        return name if name else None
+
+    async def get_name_by_id(
+            self,
+            interest_id: int,
+    ) -> Optional[str]:
+        result = await self.session.execute(
+            select(InterestModel.name).where(
+                InterestModel.id == interest_id
+            )
+        )
+
+        return result.scalar_one_or_none()

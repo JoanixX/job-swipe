@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_BASE_URL } from '@/services/backend-api';
 
 export interface InstagramPost {
   id: string;
@@ -13,7 +14,7 @@ export interface InstagramPost {
 
 export const getInstagramFeed = async (): Promise<InstagramPost[]> => {
   try {
-    const response = await axios.get('https://backendcy-dce4dqceb2ech0a2.westus3-01.azurewebsites.net/api/instagram/feed');
+    const response = await axios.get(`${API_BASE_URL}/instagram/feed`);
     return response.data;
   } catch (error) {
     console.error('Error fetching Instagram feed:', error);

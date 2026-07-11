@@ -1,20 +1,36 @@
 from abc import ABC, abstractmethod
 from typing import List
+
 from app.domain.entities.company_area import CompanyArea
+
 
 class CompanyAreaRepository(ABC):
     @abstractmethod
-    def get_by_company_id(self, company_id: int) -> List[CompanyArea]:
-        pass
+    async def get_by_company_id(
+            self,
+            company_id: int,
+    ) -> List[CompanyArea]:
+        raise NotImplementedError
 
     @abstractmethod
-    def exists(self, company_id: int, area_id: int) -> bool:
-        pass
+    async def exists(
+            self,
+            company_id: int,
+            area_id: int,
+    ) -> bool:
+        raise NotImplementedError
 
     @abstractmethod
-    def save(self, company_area: CompanyArea) -> CompanyArea:
-        pass
+    async def save(
+            self,
+            company_area: CompanyArea,
+    ) -> CompanyArea:
+        raise NotImplementedError
 
     @abstractmethod
-    def delete(self, company_id: int, area_id: int) -> None:
-        pass
+    async def delete(
+            self,
+            company_id: int,
+            area_id: int,
+    ) -> bool:
+        raise NotImplementedError

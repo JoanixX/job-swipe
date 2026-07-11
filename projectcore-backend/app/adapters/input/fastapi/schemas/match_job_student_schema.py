@@ -1,34 +1,38 @@
-from app.adapters.input.fastapi.validators import not_empty, positive_int
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional
+from datetime import datetime
+from typing import Any, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class MatchJobStudentCreate(BaseModel):
-    student_id: int = Field(..., description="ID del estudiante")
-    job_offer_id: int = Field(..., description="ID de la oferta de trabajo")
-    score: float = Field(..., description="Puntaje de similitud")
-    match_date: str = Field(..., description="Fecha del emparejamiento")
-    rank: int = Field(..., description="Rango del emparejamiento")
+    model_config = ConfigDict(str_strip_whitespace=True)
 
-    @field_validator("job_offer_id")
-    def positive_int_fields(cls, v, info):
-        if v is not None:
-            return positive_int(v, f'El ID de {info.field_name}')
-        return v
+    student_id: int = Field(..., gt=0)
+    job_offer_id: int = Field(..., gt=0)
+    score: float = Field(..., ge=0, le=1)
+    match_date: Optional[datetime] = None
+    rank: int = Field(..., gt=0)
 
-    @field_validator("student_id")
-    def positive_int_student(cls, v, info):
-        if v is not None:
-            return positive_int(v, f'El ID de {info.field_name}')
-        return v
-
-    @field_validator("rank")
-    def stage_not_empty(cls, v, info):
-        return not_empty(v, info.field_name)
 
 class MatchJobStudentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: Optional[int] = None
     student_id: int
     job_offer_id: int
     score: float
-    match_date: str
+    match_date: datetime
     rank: int
+    student_liked: Optional[bool] = None
+    company_liked: Optional[bool] = None
+
+    title: Optional[str] = None
+    company_name: Optional[str] = None
+    description: Optional[str] = None
+    location: Optional[str] = None
+    modality: Optional[int] = None
+    salary_min: Optional[int] = None
+    salary_max: Optional[int] = None
+    approximated_salary: Optional[int] = None
+    match_score: Optional[float] = None
+    skills: Optional[list[dict[str, Any]]] = None
