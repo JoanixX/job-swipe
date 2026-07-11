@@ -3,7 +3,8 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.adapters.input.fastapi.schemas.student_schema import (StudentCreate, StudentResponse, )
+from app.adapters.input.fastapi.schemas.student_schema import (EnrichedStudentResponse, StudentCreate,
+                                                               StudentResponse, )
 from app.application.factories.student_factory import StudentUseCaseFactory
 from app.infraestructure.database.connection import get_session
 
@@ -36,6 +37,16 @@ async def get_all_students(session: AsyncSession = Depends(get_session), ):
     except Exception as error:
         raise HTTPException(status_code=500, detail=f"Error interno del servidor: {error}", )
 
+
+@router.get("/student/enriched", response_model=list[EnrichedStudentResponse], tags=["Student"], )
+async def get_enriched_students(session: AsyncSession = Depends(get_session), ):
+    try:
+        student_use_case = StudentUseCaseFactory(session).build()
+        return await student_use_case.get_enriched_students()
+
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {error}", )
+    
 
 @router.get("/student/{student_id}", response_model=dict, tags=["Student"], )
 async def get_student_by_id(student_id: int, session: AsyncSession = Depends(get_session), ):

@@ -33,8 +33,8 @@ class StudentRepositoryImpl(StudentRepository):
     async def save(self, student: Student) -> Student:
         model = StudentModel(career=student.career, academic_cycle=student.academic_cycle,
                              weekly_availability=student.weekly_availability,
-                             preferred_modality=student.preferred_modality,
-                             university=student.university, embedding=student.embedding, )
+                             preferred_modality=student.preferred_modality, university=student.university,
+                             embedding=student.embedding, )
 
         self.session.add(model)
 
@@ -110,31 +110,33 @@ class StudentRepositoryImpl(StudentRepository):
         result = await self.session.execute(
             select(StudentModel).where(self._active_filter()).order_by(StudentModel.created_at.desc()))
 
-        student_models = result.scalars().all()
+        students = result.scalars().all()
         enriched_students = []
 
-        for student in student_models:
+        for student in students:
             skills_result = await self.session.execute(
                 select(SkillModel.name).join(StudentSkillModel, StudentSkillModel.skill_id == SkillModel.id, ).where(
-                    StudentSkillModel.student_id == student.id))
+                    StudentSkillModel.student_id == student.id).order_by(SkillModel.name))
 
             interests_result = await self.session.execute(select(InterestModel.name).join(StudentInterestModel,
                                                                                           StudentInterestModel.interest_id == InterestModel.id, ).where(
-                StudentInterestModel.student_id == student.id))
+                StudentInterestModel.student_id == student.id).order_by(InterestModel.name))
 
             experiences_result = await self.session.execute(
                 select(ExperienceDetailModel.name, ExperienceDetailModel.description, ).where(
-                    ExperienceDetailModel.student_id == student.id, ExperienceDetailModel.deleted_at.is_(None), ))
+                    ExperienceDetailModel.student_id == student.id,
+                    ExperienceDetailModel.deleted_at.is_(None), ).order_by(ExperienceDetailModel.created_at.desc()))
 
             user_result = await self.session.execute(
                 select(AppUserModel.description).where(AppUserModel.related_id == student.id,
                                                        AppUserModel.role == UserRole.student,
-                                                       AppUserModel.deleted_at.is_(None), ))
+                                                       AppUserModel.deleted_at.is_(None), ).limit(1))
 
             enriched_students.append(
                 {"id": student.id, "career": student.career, "academic_cycle": student.academic_cycle,
                  "weekly_availability": student.weekly_availability,
                  "preferred_modality": student.preferred_modality, "university": student.university,
+                 "embedding": student.embedding,
                  "skills": [{"name": name} for name in skills_result.scalars().all()],
                  "interests": [{"name": name} for name in interests_result.scalars().all()],
                  "experience_details": [{"name": name, "description": description, } for name, description in

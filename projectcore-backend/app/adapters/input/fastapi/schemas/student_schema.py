@@ -48,3 +48,30 @@ class StudentResponse(BaseModel):
     academic_cycle: int
     university: Optional[str] = None
     embedding: Optional[dict[str, Any]] = None
+
+
+class EnrichedSkillResponse(BaseModel):
+    name: str
+
+
+class EnrichedInterestResponse(BaseModel):
+    name: str
+
+
+class EnrichedExperienceResponse(BaseModel):
+    name: str
+    description: str
+
+
+class EnrichedStudentResponse(BaseModel):
+    id: int
+    career: str
+    academic_cycle: int
+    weekly_availability: int
+    preferred_modality: int
+    university: Optional[str] = None
+    embedding: Optional[dict[str, Any]] = None
+    skills: list[EnrichedSkillResponse] = []
+    interests: list[EnrichedInterestResponse] = []
+    experience_details: list[EnrichedExperienceResponse] = []
+    description: Optional[str] = None

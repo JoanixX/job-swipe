@@ -3,19 +3,10 @@ from typing import Any
 
 
 class Student:
-    def __init__(
-            self,
-            id: int,
-            career: str,
-            academic_cycle: int,
-            weekly_availability: int,
-            preferred_modality: int,
-            university: str | None = None,
-            embedding: dict[str, Any] | None = None,
-            created_at: datetime | None = None,
-            updated_at: datetime | None = None,
-            deleted_at: datetime | None = None,
-    ):
+    def __init__(self, id: int, career: str, academic_cycle: int, weekly_availability: int, preferred_modality: int,
+                 university: str | None = None, embedding: dict[str, Any] | None = None,
+                 created_at: datetime | None = None,
+                 updated_at: datetime | None = None, deleted_at: datetime | None = None, ):
         self.id = id
         self.career = career
         self.academic_cycle = academic_cycle
