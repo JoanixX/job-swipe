@@ -1,21 +1,24 @@
-from typing import List, Dict, Any
-from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
+from typing import Dict, Any
 
-from app.domain.entities.match_job_student import MatchJobStudent
-from app.adapters.output.orm.repositories.match_job_student_repository_impl import MatchJobStudentRepositoryImpl
-from app.application.ports.match_job_student_port import MatchJobStudentPort
-
-from app.adapters.output.orm.repositories.job_offer_repository_impl import JobOfferRepositoryImpl
-from app.adapters.output.orm.repositories.student_repository_impl import StudentRepositoryImpl
-from app.adapters.output.orm.repositories.filter_match_repository_impl import FilterMatchRepositoryImpl
-from app.adapters.output.ports.filter_match_port_impl import FilterMatchPortImpl
-from app.infraestructure.ai_client.ai_connection import match_best_job_offers, match_best_students
-from app.adapters.output.orm.models.match_job_student_model import MatchJobStudentModel
-from app.adapters.output.orm.models.company_model import CompanyModel
-from app.adapters.output.orm.models.skill_model import SkillModel
-from app.adapters.output.orm.models.job_offer_required_skill_model import JobOfferRequiredSkillModel
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+
+from app.adapters.output.orm.models.company_model import CompanyModel
+from app.adapters.output.orm.models.job_offer_required_skill_model import JobOfferRequiredSkillModel
+from app.adapters.output.orm.models.match_job_student_model import MatchJobStudentModel
+from app.adapters.output.orm.models.skill_model import SkillModel
+from app.adapters.output.orm.repositories.filter_match_repository_impl import FilterMatchRepositoryImpl
+from app.adapters.output.orm.repositories.job_offer_repository_impl import JobOfferRepositoryImpl
+from app.adapters.output.orm.repositories.match_job_student_repository_impl import MatchJobStudentRepositoryImpl
+from app.adapters.output.orm.repositories.student_repository_impl import StudentRepositoryImpl
+from app.adapters.output.ports.filter_match_port_impl import FilterMatchPortImpl
+from app.application.ports.match_job_student_port import MatchJobStudentPort
+from app.domain.entities.match_job_student import MatchJobStudent
+from app.infraestructure.ai_client.ai_connection import match_best_job_offers, match_best_students
+
+MATCH_SCORE_THRESHOLD = 0.40
+
 
 class MatchJobStudentPortImpl(MatchJobStudentPort):
     def __init__(self, session: AsyncSession):
@@ -105,13 +108,21 @@ class MatchJobStudentPortImpl(MatchJobStudentPort):
         # Guardar / Obtener matches en DB y juntar la información rica
         enriched_matches = []
         for m in matches:
-            # Threshold Semántico: No mostrar matches de muy baja similitud (< 50%)
-            if float(m["score"]) < 0.50:
+            score = float(m["score"])
+
+            if score < MATCH_SCORE_THRESHOLD:
                 continue
-                
+
             job_offer_id = m["job_offer_id"]
-            job_offer = next((j for j in job_offers if j.id == job_offer_id), None)
-            
+            job_offer = next(
+                (
+                    job_offer
+                    for job_offer in job_offers
+                    if job_offer.id == job_offer_id
+                ),
+                None,
+            )
+
             if not job_offer:
                 continue
                 

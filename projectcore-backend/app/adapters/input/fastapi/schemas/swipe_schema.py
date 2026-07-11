@@ -1,17 +1,18 @@
-from pydantic import BaseModel
-from typing import Optional
-from datetime import datetime
+from pydantic import BaseModel, Field
+
 
 class StudentSwipeRequest(BaseModel):
-    student_id: int
-    job_offer_id: int
+    student_id: int = Field(..., gt=0)
+    job_offer_id: int = Field(..., gt=0)
     liked: bool
 
+
 class CompanySwipeRequest(BaseModel):
-    company_id: int
-    student_id: int
-    job_offer_id: int
+    company_id: int = Field(..., gt=0)
+    student_id: int = Field(..., gt=0)
+    job_offer_id: int = Field(..., gt=0)
     liked: bool
+
 
 class SwipeResponse(BaseModel):
     message: str
