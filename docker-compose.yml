@@ -32,8 +32,9 @@ services:
     depends_on:
       - db
       - qdrant
+    working_dir: /app
     volumes:
-      - ./projectcore-backend:/app
+      - ./projectcore-backend:/app:Z
 
 volumes:
   postgres_data:
