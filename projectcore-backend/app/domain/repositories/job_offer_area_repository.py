@@ -1,20 +1,36 @@
 from abc import ABC, abstractmethod
 from typing import List
+
 from app.domain.entities.job_offer_area import JobOfferArea
+
 
 class JobOfferAreaRepository(ABC):
     @abstractmethod
-    def get_by_job_offer_id(self, job_offer_id: int) -> List[JobOfferArea]:
-        pass
+    async def get_by_job_offer_id(
+            self,
+            job_offer_id: int,
+    ) -> List[JobOfferArea]:
+        raise NotImplementedError
 
     @abstractmethod
-    def exists(self, job_offer_id: int, area_id: int) -> bool:
-        pass
+    async def exists(
+            self,
+            job_offer_id: int,
+            area_id: int,
+    ) -> bool:
+        raise NotImplementedError
 
     @abstractmethod
-    def save(self, job_offer_area: JobOfferArea) -> JobOfferArea:
-        pass
+    async def save(
+            self,
+            job_offer_area: JobOfferArea,
+    ) -> JobOfferArea:
+        raise NotImplementedError
 
     @abstractmethod
-    def delete(self, job_offer_id: int, area_id: int) -> None:
-        pass
+    async def delete(
+            self,
+            job_offer_id: int,
+            area_id: int,
+    ) -> bool:
+        raise NotImplementedError
