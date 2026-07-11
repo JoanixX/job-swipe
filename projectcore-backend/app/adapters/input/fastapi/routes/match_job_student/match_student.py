@@ -25,8 +25,8 @@ async def best_job_offers(student_id: int, session: AsyncSession = Depends(get_s
         raise HTTPException(status_code=502, detail=f"Error en la API de IA: {str(e)}")
 
     if not matches:
-        logger.error("No se pudieron obtener las ofertas de trabajo")
-        raise HTTPException(status_code=500, detail="No se pudieron obtener las ofertas de trabajo")
+        logger.info("No hay más ofertas de trabajo disponibles para este estudiante")
+        return []
 
     for item in matches:
         if "id" not in item:

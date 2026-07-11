@@ -1,40 +1,42 @@
 from abc import ABC, abstractmethod
+from typing import Any, Optional
+
 from app.domain.entities.agreement import Agreement
-from typing import Dict, Any, Optional
+
 
 class AgreementPort(ABC):
     @abstractmethod
-    async def register_agreement(self, agreement_data: Dict[str, Any]) -> Agreement:
-        pass
+    async def register_agreement(self, agreement_data: dict[str, Any], ) -> Agreement:
+        raise NotImplementedError
 
     @abstractmethod
-    async def get_agreement(self, agreement_id: int) -> Optional[Agreement]:
-        pass
+    async def get_agreement(self, agreement_id: int, ) -> Optional[Agreement]:
+        raise NotImplementedError
 
     @abstractmethod
-    async def get_student_agreements(self, student_id: int) -> list[Agreement]:
-        pass
+    async def get_student_agreements(self, student_id: int, ) -> list[Agreement]:
+        raise NotImplementedError
 
     @abstractmethod
-    async def get_job_offer_agreements(self, job_offer_id: int) -> list[Agreement]:
-        pass
+    async def get_job_offer_agreements(self, job_offer_id: int, ) -> list[Agreement]:
+        raise NotImplementedError
 
     @abstractmethod
     async def get_all_agreements(self) -> list[Agreement]:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
-    async def update_agreement(self, agreement_id: int, agreement_data: Dict[str, Any]) -> Optional[Agreement]:
-        pass
+    async def update_agreement(self, agreement_id: int, agreement_data: dict[str, Any], ) -> Optional[Agreement]:
+        raise NotImplementedError
 
     @abstractmethod
     async def delete_agreement(self, agreement_id: int) -> bool:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
-    async def validate_agreement_data(self, agreement_data: Dict[str, Any]) -> bool:
-        pass
+    async def validate_agreement_data(self, agreement_data: dict[str, Any], ) -> bool:
+        raise NotImplementedError
 
     @abstractmethod
-    async def check_agreement_exists(self, student_id: int, job_offer_id: int) -> bool:
-        pass
+    async def check_agreement_exists(self, student_id: int, job_offer_id: int, ) -> bool:
+        raise NotImplementedError

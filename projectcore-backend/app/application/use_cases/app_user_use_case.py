@@ -54,7 +54,48 @@ class AppUserUseCase:
             elif role_value == "student":
                 student = await session.get(StudentModel, user.related_id)
                 if student:
-                    extra = {"student_id": student.id, "student_name": student.name}
+                    extra = {"student_id": student.id, "student_name": user.name}
 
         access_token = create_access_token({"sub": user.email, "role": role_value})
         return {"access_token": access_token, "token_type": "bearer", "role": role_value, **extra}
+
+    async def update_user(self, user_id: int, updates: Dict[str, Any]) -> AppUser:
+        # Filter out None values to only update provided fields
+        update_data = {k: v for k, v in updates.items() if v is not None}
+        if not update_data:
+            raise ValueError("No fields to update")
+            
+        updated_user = await self.user_port.update(user_id, update_data)
+        if not updated_user:
+            raise ValueError("Error al actualizar el usuario")
+            
+        return updated_user
+
+    async def update_password(self, user_id: int, current_password: str, new_password: str, session) -> dict:
+        user = await self.user_port.get_by_id(user_id)
+        if not user:
+            raise ValueError("Usuario no encontrado")
+            
+        # Verify current password using service which checks hash
+        authenticated_user = await self.user_service.authenticate(user.email, current_password, session)
+        if not authenticated_user:
+            raise ValueError("La contraseña actual es incorrecta")
+            
+        # Update with new password
+        new_hash = get_password_hash(new_password)
+        updated = await self.user_port.update(user_id, {"password_hash": new_hash})
+        if not updated:
+            raise ValueError("Error al actualizar la contraseña")
+            
+        return {"success": True, "message": "Contraseña actualizada correctamente"}
+
+    async def delete_account(self, user_id: int) -> dict:
+        user = await self.user_port.get_by_id(user_id)
+        if not user:
+            raise ValueError("Usuario no encontrado")
+            
+        deleted = await self.user_port.delete(user_id)
+        if not deleted:
+            raise ValueError("Error al eliminar la cuenta")
+            
+        return {"success": True, "message": "Cuenta eliminada correctamente"}

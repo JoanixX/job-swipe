@@ -7,6 +7,7 @@ class StudentCreate(BaseModel):
     preferred_modality: int = Field(..., description="Preferred modality")
     career: str = Field(..., description="Career")
     academic_cycle: int = Field(..., description="Academic cycle")
+    university: Optional[str] = Field(None, description="University Name")
 
     @field_validator('career')
     def not_empty_fields(cls, v, info):
@@ -30,4 +31,5 @@ class StudentResponse(BaseModel):
     preferred_modality: int
     career: str
     academic_cycle: int
+    university: Optional[str] = None
     embedding: Optional[dict] = None

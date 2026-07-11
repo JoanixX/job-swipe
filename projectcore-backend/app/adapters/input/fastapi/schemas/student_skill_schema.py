@@ -7,3 +7,7 @@ class StudentSkillCreate(BaseModel):
 class StudentSkillResponse(BaseModel):
     student_id: int
     skill_id: int
+    skill_name: str | None = None
+
+class StudentSkillByNameCreate(BaseModel):
+    skill_name: str = Field(..., description="Nombre de la habilidad")

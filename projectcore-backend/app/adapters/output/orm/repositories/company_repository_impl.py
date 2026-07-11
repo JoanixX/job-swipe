@@ -14,7 +14,11 @@ class CompanyRepositoryImpl(CompanyRepository):
         model = CompanyModel(
             name=company.name,
             industry=company.industry,
-            company_culture=company.company_culture
+            company_culture=company.company_culture,
+            contact_email=company.contact_email,
+            phone=company.phone,
+            website=company.website,
+            location=company.location
         )
         self.session.add(model)
         await self.session.commit()
@@ -30,6 +34,10 @@ class CompanyRepositoryImpl(CompanyRepository):
                 name=model.name,
                 industry=model.industry,
                 company_culture=model.company_culture,
+                contact_email=model.contact_email,
+                phone=model.phone,
+                website=model.website,
+                location=model.location,
                 created_at=model.created_at,
                 updated_at=model.updated_at,
                 deleted_at=model.deleted_at
@@ -46,6 +54,10 @@ class CompanyRepositoryImpl(CompanyRepository):
                 name=model.name,
                 industry=model.industry,
                 company_culture=model.company_culture,
+                contact_email=model.contact_email,
+                phone=model.phone,
+                website=model.website,
+                location=model.location,
                 created_at=model.created_at,
                 updated_at=model.updated_at,
                 deleted_at=model.deleted_at
@@ -59,6 +71,10 @@ class CompanyRepositoryImpl(CompanyRepository):
             model.name = company.name
             model.industry = company.industry
             model.company_culture = company.company_culture
+            model.contact_email = company.contact_email
+            model.phone = company.phone
+            model.website = company.website
+            model.location = company.location
             await self.session.commit()
             await self.session.refresh(model)
             return company

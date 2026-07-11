@@ -1,6 +1,6 @@
 // Backend API service for ProjectCore platform
-const API_BASE_URL = import.meta.env.PROD 
-  ? 'https://cy-backend-ch-b8f4h8bqh9epepcr.chilecentral-01.azurewebsites.net/api'
+export const API_BASE_URL = import.meta.env.PROD 
+  ? 'http://localhost:8000/api'
   : '/api';
 
 // User registration and authentication types
@@ -17,6 +17,9 @@ export interface UserRegistration {
   main_motivation?: string;
   description?: string;
   ruc?: string;
+  phone?: string;
+  linkedin?: string;
+  portfolio?: string;
 }
 
 export interface LoginCredentials {
@@ -148,6 +151,28 @@ export const aiMatchingAPI = {
   }
 };
 
+// Swipe API functions
+export const swipeAPI = {
+  studentSwipe: async (studentId: number, jobOfferId: number, liked: boolean): Promise<{ message: string, mutual_match: boolean }> => {
+    return apiRequest(`/swipe/student`, {
+      method: 'POST',
+      body: JSON.stringify({ student_id: studentId, job_offer_id: jobOfferId, liked })
+    });
+  },
+  companySwipe: async (companyId: number, studentId: number, jobOfferId: number, liked: boolean): Promise<{ message: string, mutual_match: boolean }> => {
+    return apiRequest(`/swipe/company`, {
+      method: 'POST',
+      body: JSON.stringify({ company_id: companyId, student_id: studentId, job_offer_id: jobOfferId, liked })
+    });
+  },
+  getStudentMatches: async (studentId: number): Promise<any[]> => {
+    return apiRequest(`/matches/student/${studentId}`);
+  },
+  getCompanyMatches: async (companyId: number): Promise<any[]> => {
+    return apiRequest(`/matches/company/${companyId}`);
+  }
+};
+
 // Student API functions
 export const studentAPI = {
   // Get student by ID
@@ -158,6 +183,34 @@ export const studentAPI = {
   // Get all students
   getAll: async (): Promise<any[]> => {
     return apiRequest('/student/all');
+  },
+
+  // Update student
+  update: async (studentId: number, studentData: any): Promise<any> => {
+    return apiRequest(`/student/${studentId}`, {
+      method: 'PUT',
+      body: JSON.stringify(studentData)
+    });
+  },
+
+  // Get student skills
+  getSkills: async (studentId: number): Promise<any[]> => {
+    return apiRequest(`/student/${studentId}/skills`);
+  },
+
+  // Add student skill by name
+  addSkillByName: async (studentId: number, skillName: string): Promise<any> => {
+    return apiRequest(`/student/${studentId}/skill_by_name`, {
+      method: 'POST',
+      body: JSON.stringify({ skill_name: skillName })
+    });
+  },
+
+  // Remove student skill
+  removeSkill: async (studentId: number, skillId: number): Promise<any> => {
+    return apiRequest(`/student/${studentId}/skill/${skillId}`, {
+      method: 'DELETE'
+    });
   }
 };
 
@@ -411,6 +464,32 @@ export const authAPI = {
   // Get user by email
   getUserByEmail: async (email: string): Promise<any> => {
     return apiRequest(`/user/${email}`);
+  },
+
+  // Update user
+  updateUser: async (userId: number, userData: any): Promise<any> => {
+    return apiRequest(`/user/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(userData)
+    });
+  },
+
+  // Update user password
+  updatePassword: async (userId: number, currentPassword: string, newPassword: string): Promise<any> => {
+    return apiRequest(`/user/${userId}/password`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword
+      })
+    });
+  },
+
+  // Delete account
+  deleteAccount: async (userId: number): Promise<any> => {
+    return apiRequest(`/user/${userId}`, {
+      method: 'DELETE'
+    });
   }
 };
 

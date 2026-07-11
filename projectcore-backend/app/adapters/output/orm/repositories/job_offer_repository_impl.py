@@ -45,6 +45,7 @@ class JobOfferRepositoryImpl(JobOfferRepository):
                 "id": j.id,
                 "title": j.title,
                 "description": j.description,
+                "location": j.location,
                 "areas": areas,
                 "required_skills": skills,
             })
@@ -60,6 +61,7 @@ class JobOfferRepositoryImpl(JobOfferRepository):
             duration=job_offer.duration,
             start_date=job_offer.start_date,
             modality=job_offer.modality,
+            location=job_offer.location,
             embedding=job_offer.embedding
         )
         self.session.add(model)
@@ -81,6 +83,7 @@ class JobOfferRepositoryImpl(JobOfferRepository):
                 duration=model.duration,
                 start_date=model.start_date,
                 modality=model.modality,
+                location=model.location,
                 embedding=model.embedding,
                 created_at=model.created_at,
                 updated_at=model.updated_at,
@@ -103,6 +106,7 @@ class JobOfferRepositoryImpl(JobOfferRepository):
                 duration=model.duration,
                 start_date=model.start_date,
                 modality=model.modality,
+                location=model.location,
                 embedding=model.embedding,
                 created_at=model.created_at,
                 updated_at=model.updated_at,
@@ -126,6 +130,7 @@ class JobOfferRepositoryImpl(JobOfferRepository):
                     duration=model.duration,
                     start_date=model.start_date,
                     modality=model.modality,
+                    location=model.location,
                     embedding=model.embedding,
                     created_at=model.created_at,
                     updated_at=model.updated_at,
@@ -146,6 +151,7 @@ class JobOfferRepositoryImpl(JobOfferRepository):
             model.duration = job_offer.duration
             model.start_date = job_offer.start_date
             model.modality = job_offer.modality
+            model.location = job_offer.location
             model.embedding = job_offer.embedding
             await self.session.commit()
             await self.session.refresh(model)

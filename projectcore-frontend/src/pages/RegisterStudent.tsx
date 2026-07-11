@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useLocation } from 'wouter'
 import { Button } from '@/components/ui/button'
+import Logo from '@/components/Logo'
+import { API_BASE_URL } from '@/services/backend-api'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -223,6 +225,7 @@ export default function RegisterStudent() {
     career: '',
     academic_cycle: ''
   })
+  const [termsAccepted, setTermsAccepted] = useState(false)
   const [registrationSuccess, setRegistrationSuccess] = useState(false)
 
   // Auto-fill form with Google data if available
@@ -315,6 +318,11 @@ export default function RegisterStudent() {
         return
       }
       
+      if (!termsAccepted) {
+        alert('Debes aceptar los Términos de Servicio y la Política de Privacidad para continuar.')
+        return
+      }
+      
       if (formData.password !== formData.confirmPassword) {
         alert('Las contraseñas no coinciden')
         return
@@ -351,7 +359,7 @@ export default function RegisterStudent() {
       
       console.log('Paso 1: Registrando estudiante...', studentPayload)
       
-      const studentResponse = await fetch('https://backendcy-dce4dqceb2ech0a2.westus3-01.azurewebsites.net/api/register/student', {
+      const studentResponse = await fetch(`${API_BASE_URL}/register/student`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -389,7 +397,7 @@ export default function RegisterStudent() {
       
       console.log('Paso 2: Registrando usuario para login...', { ...userPayload, password: '[HIDDEN]' })
       
-      const userResponse = await fetch('https://backendcy-dce4dqceb2ech0a2.westus3-01.azurewebsites.net/api/register/user', {
+      const userResponse = await fetch(`${API_BASE_URL}/register/user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -426,6 +434,9 @@ export default function RegisterStudent() {
         picture: picture || undefined,
         userType: 'student' as const,
         isGoogleAuth: googleAuth,
+        phone: '',
+        linkedin: '',
+        portfolio: '',
         profileData: {
           career: finalCareer,
           location: formData.location,
@@ -870,6 +881,22 @@ export default function RegisterStudent() {
                   <AnimatePresence mode="wait">
                     {renderStep()}
                   </AnimatePresence>
+                  
+                  {/* Terms and conditions checkbox (Only on the last step, wait, it's a 1-step form in this view for now since step 2 isn't fully rendered in the same way? Wait, step 1 and 2 are there.) */}
+                  {currentStep === 1 && (
+                    <div className="mt-6 flex items-start gap-2">
+                      <input 
+                        type="checkbox" 
+                        id="terms" 
+                        checked={termsAccepted}
+                        onChange={(e) => setTermsAccepted(e.target.checked)}
+                        className="mt-1 w-4 h-4 rounded border-gray-300 text-[#FF258D] focus:ring-[#FF258D]"
+                      />
+                      <label htmlFor="terms" className="text-sm text-gray-300">
+                        He leído y acepto los <a href="/terminos-servicio" className="text-[#FF258D] hover:underline" target="_blank">Términos de Servicio</a> y la <a href="/politica-privacidad" className="text-[#FF258D] hover:underline" target="_blank">Política de Privacidad</a>.
+                      </label>
+                    </div>
+                  )}
 
                   {/* Navigation Buttons */}
                   <div className="flex justify-between pt-4 sm:pt-6">

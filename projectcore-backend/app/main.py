@@ -24,11 +24,12 @@ from app.adapters.input.fastapi.routes.student_interest import router as student
 from app.adapters.input.fastapi.routes.student_skill import router as student_skill_router
 from app.adapters.input.fastapi.routes.student import router as student_router
 from app.adapters.input.fastapi.routes.preguntar_ia import router as preguntar_ia_router
+from app.adapters.input.fastapi.routes.swipe.router import router as swipe_router
 
-#BD Vectorial
+# BD Vectorial
 from app.adapters.input.fastapi.routes.embeddings.router import router as embeddings_router
 
-#Modelos de la BD Relacional
+# Modelos de la BD Relacional
 from app.domain.entities.agreement import Agreement
 from app.domain.entities.app_user import AppUser
 from app.domain.entities.area import Area
@@ -48,7 +49,7 @@ from app.domain.entities.student_interest import StudentInterest
 from app.domain.entities.student_skill import StudentSkill
 from app.domain.entities.student import Student
 
-#Modelos de la BD Vectorial
+# Modelos de la BD Vectorial
 from app.domain.entities.embeddings.assistant_embeddings import AssistantEmbeddings
 from app.domain.entities.embeddings.kawsai_embeddings import KawsAIEmbeddings
 
@@ -74,6 +75,7 @@ app.include_router(student_skill_router, prefix="/api")
 app.include_router(student_router, prefix = "/api")
 app.include_router(embeddings_router, prefix="/api")
 app.include_router(preguntar_ia_router, prefix="/api")
+app.include_router(swipe_router, prefix="/api")
 
 # Condiguración de CORS local
 origins = [

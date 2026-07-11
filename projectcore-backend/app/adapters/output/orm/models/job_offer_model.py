@@ -12,6 +12,7 @@ class JobOfferModel(Base):
     required_hours = Column(SmallInteger, nullable=False)
     approximated_salary = Column(Integer, nullable=False)
     duration = Column(SmallInteger, nullable=False)
+    location = Column(String(255), nullable=True)
     start_date = Column(Date, nullable=False)
     modality = Column(SmallInteger, nullable=False)
     embedding = Column(JSON, nullable=True)

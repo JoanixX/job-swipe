@@ -1,27 +1,32 @@
-'use client'
-
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useLocation } from 'wouter'
+import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { FaEnvelope, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa'
+import { ArrowLeft, Building2, GraduationCap } from 'lucide-react'
 import { useUser } from '@/lib/user-context'
+import { API_BASE_URL } from '@/services/backend-api'
 
 export default function Login() {
   const [, setLocation] = useLocation()
   const { setUser } = useUser()
+  const [loginType, setLoginType] = useState<'selection' | 'student' | 'company'>('selection')
+  
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const type = params.get('type')
+    if (type === 'student' || type === 'company') {
+      setLoginType(type)
+    }
+  }, [])
+
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   })
-  const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-
-  const updateFormData = (field: keyof typeof formData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,12 +39,13 @@ export default function Login() {
     setIsLoading(true)
     
     try {
-      // Direct Azure backend login
-      console.log('Intentando login con Azure backend...')
-      const response = await fetch('https://cy-backend-ch-b8f4h8bqh9epepcr.chilecentral-01.azurewebsites.net/api/login', {
+      const API_URL = import.meta.env.PROD ? 'http://localhost:8000/api' : '/api'
+      
+      const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         body: JSON.stringify({
           email: formData.email,
@@ -48,57 +54,38 @@ export default function Login() {
       })
 
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error('Login error:', errorText)
-        
-        // Check if it's the student.name error from backend
-        if (errorText.includes("'StudentModel' object has no attribute 'name'")) {
-          console.log('Backend has student.name error, trying simplified login...')
-          // Continue with user data fetch instead of failing
-        } else {
-          throw new Error('Credenciales incorrectas')
-        }
+        throw new Error('Credenciales incorrectas')
       }
 
-      let loginResult = null
-      if (response.ok) {
-        loginResult = await response.json()
-        console.log('Login exitoso:', loginResult)
-      }
-
-      // Get user details
-      console.log('Obteniendo detalles del usuario...')
-      const userResponse = await fetch(`https://cy-backend-ch-b8f4h8bqh9epepcr.chilecentral-01.azurewebsites.net/api/user/${formData.email}`)
+      const loginResult = await response.json()
       
+      // Obtener datos del usuario
+      const userResponse = await fetch(`${API_URL}/user/${formData.email}`)
       if (!userResponse.ok) {
         throw new Error('Error al obtener datos del usuario')
       }
-      
       const userData = await userResponse.json()
-      console.log('Datos del usuario obtenidos:', userData)
 
-      // Get student details if it's a student
+      // Validar que el rol coincida con el portal elegido (opcional, pero buena práctica)
+      if (loginType === 'student' && userData.role !== 'student') {
+        alert('Esta cuenta pertenece a una empresa. Serás redirigido al portal correspondiente.')
+      } else if (loginType === 'company' && userData.role === 'student') {
+        alert('Esta cuenta pertenece a un estudiante. Serás redirigido al portal correspondiente.')
+      }
+
+      // Obtener datos específicos si es estudiante
       let studentData: any = null
-      if (userData.role === 'student' && userData.related_id && userData.related_id !== 1) {
-        console.log('Obteniendo datos del estudiante...')
+      if (userData.role === 'student' && userData.related_id) {
         try {
-          const studentResponse = await fetch(`https://cy-backend-ch-b8f4h8bqh9epepcr.chilecentral-01.azurewebsites.net/api/student/${userData.related_id}`)
+          const studentResponse = await fetch(`${API_URL}/student/${userData.related_id}`)
           if (studentResponse.ok) {
             studentData = await studentResponse.json()
-            console.log('Datos del estudiante obtenidos:', studentData)
-          } else {
-            console.log('Student not found, using defaults')
-            studentData = {
-              id: userData.related_id,
-              career: "Medicina"
-            }
           }
         } catch (error) {
-          console.log('Error obteniendo datos del estudiante:', error)
+          console.error('Error al obtener perfil de estudiante', error)
         }
       }
 
-      // Create user context data with proper student_id mapping
       const userContextData = {
         id: userData.id?.toString() || 'temp_id',
         name: userData.name || 'Usuario',
@@ -106,11 +93,14 @@ export default function Login() {
         userType: userData.role === 'student' ? 'student' : 'company',
         isGoogleAuth: false,
         picture: '',
+        phone: userData.phone || '',
+        linkedin: userData.linkedin || '',
+        portfolio: userData.portfolio || '',
         profileData: userData.role === 'student' ? {
           dni: userData.dni || '',
           career: studentData?.career || '',
           academic_cycle: studentData?.academic_cycle || 1,
-          student_id: userData.related_id, // This is what dashboard looks for
+          student_id: userData.related_id,
           related_id: userData.related_id,
           user_id: userData.id,
           weekly_availability: studentData?.weekly_availability || 40,
@@ -118,140 +108,252 @@ export default function Login() {
           main_motivation: userData.main_motivation || '',
           description: userData.description || '',
           location: userData.location || ''
-        } : null
+        } : {
+          company_id: userData.related_id,
+          user_id: userData.id,
+          related_id: userData.related_id,
+        }
       }
 
-      // Set user in context
-      setUser(userContextData)
+      setUser(userContextData as any)
 
-      // Save session data
-      localStorage.setItem('authToken', loginResult?.access_token || 'demo_token_' + Date.now())
+      localStorage.setItem('authToken', loginResult.access_token || 'demo_token')
       localStorage.setItem('userRole', userData.role)
       localStorage.setItem('userEmail', formData.email)
-      localStorage.setItem('userId', userData.related_id?.toString() || userData.id?.toString())
-      localStorage.setItem('studentId', userData.related_id?.toString() || userData.id?.toString())
+      localStorage.setItem('userId', userData.id?.toString())
+      if (userData.role === 'student') {
+        localStorage.setItem('studentId', userData.related_id?.toString())
+      } else {
+        localStorage.setItem('companyId', userData.related_id?.toString())
+      }
       
-      // Redirect based on user type
-      if (userData.role?.toLowerCase() === 'student') {
-        setLocation('/student-dashboard')
+      // Redirigir según el rol real del usuario
+      if (userData.role === 'student') {
+        setLocation('/student-profile')
       } else {
         setLocation('/company-dashboard')
       }
 
     } catch (error) {
       console.error('Error durante el login:', error)
-      alert('Credenciales incorrectas. Por favor verifica tu email y contraseña, o regístrate si no tienes una cuenta.')
+      alert('Credenciales incorrectas. Verifica tu correo y contraseña.')
     } finally {
       setIsLoading(false)
     }
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0E0C2C] via-[#0F1724] to-[#0E0C2C] flex items-center justify-center px-4">
-      {/* Background Effects */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#0EA5FF] rounded-full blur-3xl opacity-10 animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#7C3AED] rounded-full blur-3xl opacity-10 animate-pulse delay-1000"></div>
+  const renderSelection = () => (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="flex flex-col items-center justify-center w-full max-w-md mx-auto"
+    >
+      <h1 className="text-3xl font-bold text-white mb-2">Iniciar Sesión</h1>
+      <p className="text-white/80 mb-8">Elige cómo deseas ingresar a la plataforma</p>
+      
+      <div className="grid grid-cols-1 gap-4 w-full">
+        <button 
+          onClick={() => setLoginType('student')}
+          className="bg-white hover:bg-gray-50 text-[#1E3A8A] p-6 rounded-2xl shadow-lg transition-all flex items-center gap-4 group"
+        >
+          <div className="w-14 h-14 bg-[#2D4A9F]/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+            <GraduationCap className="w-8 h-8 text-[#2D4A9F]" />
+          </div>
+          <div className="text-left">
+            <h2 className="text-xl font-bold text-gray-900">Soy Estudiante</h2>
+            <p className="text-sm text-gray-500">Accede a tus proyectos y postulaciones</p>
+          </div>
+        </button>
+
+        <button 
+          onClick={() => setLoginType('company')}
+          className="bg-white hover:bg-gray-50 text-[#1E3A8A] p-6 rounded-2xl shadow-lg transition-all flex items-center gap-4 group"
+        >
+          <div className="w-14 h-14 bg-[#2D4A9F]/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+            <Building2 className="w-8 h-8 text-[#2D4A9F]" />
+          </div>
+          <div className="text-left">
+            <h2 className="text-xl font-bold text-gray-900">Soy Empresa</h2>
+            <p className="text-sm text-gray-500">Accede a tu panel de reclutamiento</p>
+          </div>
+        </button>
+      </div>
+    </motion.div>
+  )
+
+  const renderStudentLogin = () => (
+    <motion.div 
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="flex flex-col items-center justify-center w-full max-w-md mx-auto"
+    >
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold text-white mb-2">Bienvenido</h1>
+        <p className="text-white/80">Inicia sesión para continuar</p>
       </div>
 
-      {/* Header */}
-      <div className="fixed top-4 left-4 z-20">
-        <Button
-          variant="ghost"
-          className="text-white hover:bg-white/10"
-          onClick={() => setLocation('/')}
-        >
-          ← Volver al Inicio
-        </Button>
-      </div>
-
-      <div className="relative z-10 w-full max-w-md">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-br from-[#0B1226]/90 to-[#0B1226]/70 p-8 rounded-2xl border border-[#0EA5FF]/20 backdrop-blur-sm shadow-2xl"
-        >
-          {/* Logo and Title */}
-          <div className="text-center mb-8">
-            <img
-              src="/images/logoCircular.png"
-              alt="ProjectCore Logo"
-              width={80}
-              height={80}
-              className="mx-auto mb-4 rounded-full"
+      <div className="bg-white w-full rounded-3xl p-8 shadow-2xl">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="space-y-1.5">
+            <Label htmlFor="email" className="text-sm font-semibold text-gray-800">Correo Electrónico</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="estudiante@universidad.edu"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="bg-transparent border-gray-200 text-gray-900 focus:border-[#4F6CDB] focus:ring-[#4F6CDB]"
+              required
             />
-            <h1 className="text-3xl font-bold text-white mb-2">
-              Iniciar Sesión
-            </h1>
-            <p className="text-gray-300">
-              Accede a tu cuenta de ProjectCore
-            </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <Label htmlFor="email" className="text-white flex items-center gap-2">
-                <FaEnvelope className="w-4 h-4 text-[#0EA5FF]" />
-                Correo Electrónico
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => updateFormData('email', e.target.value)}
-                className="mt-2 bg-[#1a0b3d]/80 border-[#0EA5FF]/30 text-white placeholder:text-gray-300 backdrop-blur-sm focus:border-[#0EA5FF] focus:ring-[#0EA5FF]"
-                placeholder="tu@email.com"
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="password" className="text-white flex items-center gap-2">
-                <FaLock className="w-4 h-4 text-[#7C3AED]" />
-                Contraseña
-              </Label>
-              <div className="relative mt-2">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={formData.password}
-                  onChange={(e) => updateFormData('password', e.target.value)}
-                  className="bg-[#1a0b3d]/80 border-[#0EA5FF]/30 text-white placeholder:text-gray-300 backdrop-blur-sm focus:border-[#0EA5FF] focus:ring-[#0EA5FF] pr-12"
-                  placeholder="Tu contraseña"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#0EA5FF] transition-colors"
-                >
-                  {showPassword ? <FaEyeSlash /> : <FaEye />}
-                </button>
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-gradient-to-r from-[#0EA5FF] to-[#7C3AED] hover:from-[#0EA5FF]/90 hover:to-[#7C3AED]/90 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl"
-            >
-              {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
-            </Button>
-          </form>
-
-          <div className="mt-8 text-center">
-            <p className="text-gray-300 mb-4">
-              ¿No tienes una cuenta?
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => setLocation('/register')}
-              className="border-[#0EA5FF] text-[#0EA5FF] hover:bg-[#0EA5FF] hover:text-white transition-all duration-300"
-            >
-              Registrarse
-            </Button>
+          <div className="space-y-1.5">
+            <Label htmlFor="password" className="text-sm font-semibold text-gray-800">Contraseña</Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="Ingresa tu contraseña"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              className="bg-transparent border-gray-200 text-gray-900 focus:border-[#4F6CDB] focus:ring-[#4F6CDB]"
+              required
+            />
           </div>
-        </motion.div>
+
+          <div className="flex justify-end">
+            <button 
+              type="button" 
+              onClick={() => setLocation('/recover-password?type=student')}
+              className="text-sm text-[#4F6CDB] hover:underline"
+            >
+              ¿Olvidaste tu contraseña?
+            </button>
+          </div>
+
+          <Button 
+            type="submit" 
+            disabled={isLoading}
+            className="w-full bg-[#1E3A8A] hover:bg-[#1E3A8A]/90 text-white py-6 rounded-xl font-medium text-base transition-colors mt-2"
+          >
+            {isLoading ? 'Iniciando...' : 'Iniciar Sesión'}
+          </Button>
+
+          <div className="text-center pt-2">
+            <button
+              type="button"
+              onClick={() => setLocation('/simple-register-student')}
+              className="text-[#4F6CDB] hover:underline text-sm font-medium"
+            >
+              ¿No tienes cuenta? Regístrate
+            </button>
+          </div>
+        </form>
+      </div>
+    </motion.div>
+  )
+
+  const renderCompanyLogin = () => (
+    <motion.div 
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="flex flex-col items-center justify-center w-full max-w-md mx-auto"
+    >
+      <div className="text-center mb-8">
+        <div className="w-16 h-16 bg-white rounded-2xl shadow-lg flex items-center justify-center mx-auto mb-4">
+          <Building2 className="w-8 h-8 text-[#1E3A8A]" />
+        </div>
+        <h1 className="text-3xl font-bold text-white mb-2">Portal Empresarial</h1>
+        <p className="text-white/80">Accede a tu panel de reclutamiento</p>
+      </div>
+
+      <div className="bg-white w-full rounded-3xl p-8 shadow-2xl">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="space-y-1.5">
+            <Label htmlFor="email" className="text-sm font-semibold text-gray-800">Correo Corporativo</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="reclutamiento@empresa.com"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="bg-transparent border-gray-200 text-gray-900 focus:border-[#4F6CDB] focus:ring-[#4F6CDB]"
+              required
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="password" className="text-sm font-semibold text-gray-800">Contraseña</Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="Ingresa tu contraseña"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              className="bg-transparent border-gray-200 text-gray-900 focus:border-[#4F6CDB] focus:ring-[#4F6CDB]"
+              required
+            />
+          </div>
+
+          <div className="flex justify-end">
+            <button 
+              type="button" 
+              onClick={() => setLocation('/recover-password?type=company')}
+              className="text-sm text-[#4F6CDB] hover:underline"
+            >
+              ¿Olvidaste tu contraseña?
+            </button>
+          </div>
+
+          <Button 
+            type="submit" 
+            disabled={isLoading}
+            className="w-full bg-[#1E3A8A] hover:bg-[#1E3A8A]/90 text-white py-6 rounded-xl font-medium text-base transition-colors mt-2"
+          >
+            {isLoading ? 'Iniciando...' : 'Iniciar Sesión'}
+          </Button>
+
+          <div className="text-center pt-2">
+            <button
+              type="button"
+              onClick={() => setLocation('/register-company')}
+              className="text-[#4F6CDB] hover:underline text-sm font-medium"
+            >
+              ¿Tu empresa no está registrada? Crear cuenta
+            </button>
+          </div>
+        </form>
+      </div>
+    </motion.div>
+  )
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#2D4A9F] to-[#4F6CDB] text-white flex flex-col relative font-sans">
+      <div className="p-6 relative z-20">
+        <button 
+          onClick={() => {
+            if (loginType !== 'selection') {
+              setLoginType('selection')
+              setFormData({ email: '', password: '' })
+            } else {
+              setLocation('/')
+            }
+          }}
+          className="flex items-center gap-2 text-white hover:text-white/80 transition-colors text-sm font-medium"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Volver
+        </button>
+      </div>
+
+      <div className="flex-1 flex flex-col items-center justify-center p-4 relative z-10">
+        <AnimatePresence mode="wait">
+          {loginType === 'selection' && renderSelection()}
+          {loginType === 'student' && renderStudentLogin()}
+          {loginType === 'company' && renderCompanyLogin()}
+        </AnimatePresence>
       </div>
     </div>
   )

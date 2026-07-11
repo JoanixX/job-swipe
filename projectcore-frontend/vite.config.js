@@ -16,9 +16,9 @@ export default defineConfig({
     cors: true,
     proxy: {
       '/api': {
-        target: 'https://cy-backend-ch-b8f4h8bqh9epepcr.chilecentral-01.azurewebsites.net',
+        target: 'http://localhost:8000',
         changeOrigin: true,
-        secure: true,
+        secure: false,
         rewrite: (path) => path,
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {

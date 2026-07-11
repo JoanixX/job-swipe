@@ -12,6 +12,7 @@ class JobOfferCreate(BaseModel):
     duration: int = Field(..., description="Duration")
     start_date: date = Field(..., description="Start date")
     modality: int = Field(..., description="Modality")
+    location: Optional[str] = Field(None, description="Location of the job offer")
 
     @field_validator("start_date")
     def start_date_validator(cls, v, info):
@@ -35,4 +36,5 @@ class JobOfferResponse(BaseModel):
     duration: int
     start_date: date
     modality: int
+    location: Optional[str] = None
     embedding: Optional[dict] = None
