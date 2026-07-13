@@ -77,6 +77,45 @@ export default function CompanyDashboard() {
   const [candidatesList, setCandidatesList] = useState<any[]>([])
   const [candidateStats, setCandidateStats] = useState({ matchPromedio: 0, topCandidatos: 0, contactados: 0, entrevistas: 0 })
 
+  // Postulantes reales (estudiantes que dieron swipe derecha a ofertas de la empresa)
+  const [applicants, setApplicants] = useState<any[]>([])
+
+  const fetchApplicants = () => {
+    const companyId = localStorage.getItem('companyId')
+    if (!companyId) return
+    fetch(`${API_BASE_URL}/company/${companyId}/applicants`)
+      .then(res => res.json())
+      .then(data => { if (Array.isArray(data)) setApplicants(data) })
+      .catch(err => console.error('Error fetching applicants:', err))
+  }
+
+  // Polling ligero para que el panel se actualice en tiempo real
+  useEffect(() => {
+    fetchApplicants()
+    const timer = setInterval(fetchApplicants, 10_000)
+    return () => clearInterval(timer)
+  }, [])
+
+  // Aceptar (match) o descartar a un postulante
+  const handleApplicantDecision = async (applicant: any, liked: boolean) => {
+    const companyId = parseInt(localStorage.getItem('companyId') || '0')
+    try {
+      const res = await fetch(`${API_BASE_URL}/swipe/company`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company_id: companyId,
+          student_id: applicant.student_id,
+          job_offer_id: applicant.job_offer_id,
+          liked
+        })
+      })
+      if (res.ok) fetchApplicants()
+    } catch (err) {
+      console.error('Error registrando decisión:', err)
+    }
+  }
+
   // Security State
   const [passwordData, setPasswordData] = useState({ current: '', new: '', confirm: '' })
 
@@ -429,17 +468,33 @@ export default function CompanyDashboard() {
           Publicar Oferta
         </button>
         <button
+          onClick={() => setActiveView('applicants')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+            activeView === 'applicants'
+              ? 'bg-[#1e3a8a] text-white'
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          <Users className="w-5 h-5" />
+          Postulantes
+          {applicants.filter(a => a.company_liked == null).length > 0 && (
+            <span className={`ml-auto text-xs font-bold px-2 py-0.5 rounded-full ${activeView === 'applicants' ? 'bg-white text-[#1e3a8a]' : 'bg-[#1e3a8a] text-white'}`}>
+              {applicants.filter(a => a.company_liked == null).length}
+            </span>
+          )}
+        </button>
+        <button
           onClick={() => {
             setActiveView('candidates')
             setSelectedCandidate(null)
           }}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-            activeView === 'candidates' 
-              ? 'bg-[#1e3a8a] text-white' 
+            activeView === 'candidates'
+              ? 'bg-[#1e3a8a] text-white'
               : 'text-gray-600 hover:bg-gray-50'
           }`}
         >
-          <Users className="w-5 h-5" />
+          <Star className="w-5 h-5" />
           Candidatos IA
         </button>
       </nav>
@@ -484,44 +539,48 @@ export default function CompanyDashboard() {
       </div>
 
       <div className="grid grid-cols-4 gap-6">
-        <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+        <Card onClick={() => setActiveView('dashboard')} className="bg-white border-gray-100 shadow-sm rounded-xl cursor-pointer hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center mb-4">
               <Briefcase className="w-5 h-5" />
             </div>
             <p className="text-sm text-gray-500 font-medium">Vacantes Activas</p>
-            <h3 className="text-3xl font-bold text-gray-900 mt-1">12</h3>
-            <p className="text-xs text-gray-400 mt-2">+2 esta semana</p>
+            <h3 className="text-3xl font-bold text-gray-900 mt-1">{companyOffers.length}</h3>
+            <p className="text-xs text-gray-400 mt-2">Publicadas por tu empresa</p>
           </CardContent>
         </Card>
-        <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+        <Card onClick={() => setActiveView('applicants')} className="bg-white border-gray-100 shadow-sm rounded-xl cursor-pointer hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center mb-4">
               <Users className="w-5 h-5" />
             </div>
             <p className="text-sm text-gray-500 font-medium">Postulantes Totales</p>
-            <h3 className="text-3xl font-bold text-gray-900 mt-1">347</h3>
-            <p className="text-xs text-gray-400 mt-2">+48 esta semana</p>
+            <h3 className="text-3xl font-bold text-gray-900 mt-1">{applicants.length}</h3>
+            <p className="text-xs text-gray-400 mt-2">{applicants.filter(a => a.company_liked == null).length} por revisar</p>
           </CardContent>
         </Card>
-        <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+        <Card onClick={() => setActiveView('applicants')} className="bg-white border-gray-100 shadow-sm rounded-xl cursor-pointer hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center mb-4">
-              <Eye className="w-5 h-5" />
+              <CheckCircle2 className="w-5 h-5" />
             </div>
-            <p className="text-sm text-gray-500 font-medium">Vistas de Perfil</p>
-            <h3 className="text-3xl font-bold text-gray-900 mt-1">1,203</h3>
-            <p className="text-xs text-gray-400 mt-2">+12% vs semana anterior</p>
+            <p className="text-sm text-gray-500 font-medium">Matches</p>
+            <h3 className="text-3xl font-bold text-gray-900 mt-1">{applicants.filter(a => a.company_liked === true).length}</h3>
+            <p className="text-xs text-gray-400 mt-2">Contacto habilitado</p>
           </CardContent>
         </Card>
-        <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
+        <Card onClick={() => setActiveView('candidates')} className="bg-white border-gray-100 shadow-sm rounded-xl cursor-pointer hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center mb-4">
               <TrendingUp className="w-5 h-5" />
             </div>
             <p className="text-sm text-gray-500 font-medium">Match Promedio</p>
-            <h3 className="text-3xl font-bold text-gray-900 mt-1">84%</h3>
-            <p className="text-xs text-gray-400 mt-2">+3% de mejora</p>
+            <h3 className="text-3xl font-bold text-gray-900 mt-1">
+              {applicants.length > 0
+                ? `${Math.round(applicants.reduce((acc, a) => acc + (a.score || 0), 0) / applicants.length * 100)}%`
+                : '—'}
+            </h3>
+            <p className="text-xs text-gray-400 mt-2">Afinidad de tus postulantes</p>
           </CardContent>
         </Card>
       </div>
@@ -540,7 +599,7 @@ export default function CompanyDashboard() {
                   <div className="flex items-center gap-8">
                     <div className="text-center">
                       <p className="text-xs text-gray-400">Postulantes</p>
-                      <p className="font-semibold text-[#1e3a8a]">{Math.floor(Math.random() * 50)}</p>
+                      <p className="font-semibold text-[#1e3a8a]">{applicants.filter(a => a.job_offer_id?.toString() === offer.id?.toString()).length}</p>
                     </div>
                     <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-50 border-none font-medium">
                       Activa
@@ -558,17 +617,17 @@ export default function CompanyDashboard() {
           <h3 className="text-lg font-bold text-gray-900">Acciones Rápidas</h3>
           <Card className="bg-white border-gray-100 shadow-sm rounded-xl">
             <CardContent className="p-4 space-y-3">
-              <button className="w-full text-left p-4 rounded-lg border border-gray-100 hover:border-[#1e3a8a]/20 hover:bg-blue-50/30 transition-all group">
-                <h4 className="font-semibold text-gray-900 group-hover:text-[#1e3a8a]">Revisar Nuevos Candidatos</h4>
-                <p className="text-xs text-gray-400 mt-1">23 candidatos esperando</p>
+              <button onClick={() => setActiveView('applicants')} className="w-full text-left p-4 rounded-lg border border-gray-100 hover:border-[#1e3a8a]/20 hover:bg-blue-50/30 transition-all group">
+                <h4 className="font-semibold text-gray-900 group-hover:text-[#1e3a8a]">Revisar Postulantes</h4>
+                <p className="text-xs text-gray-400 mt-1">{applicants.filter(a => a.company_liked == null).length} esperando tu decisión</p>
               </button>
-              <button className="w-full text-left p-4 rounded-lg border border-gray-100 hover:border-[#1e3a8a]/20 hover:bg-blue-50/30 transition-all group">
-                <h4 className="font-semibold text-gray-900 group-hover:text-[#1e3a8a]">Programar Entrevistas</h4>
-                <p className="text-xs text-gray-400 mt-1">5 invitaciones pendientes</p>
+              <button onClick={() => setActiveView('post-offer')} className="w-full text-left p-4 rounded-lg border border-gray-100 hover:border-[#1e3a8a]/20 hover:bg-blue-50/30 transition-all group">
+                <h4 className="font-semibold text-gray-900 group-hover:text-[#1e3a8a]">Publicar Nueva Oferta</h4>
+                <p className="text-xs text-gray-400 mt-1">Crea una vacante en 3 pasos</p>
               </button>
-              <button className="w-full text-left p-4 rounded-lg border border-gray-100 hover:border-[#1e3a8a]/20 hover:bg-blue-50/30 transition-all group">
-                <h4 className="font-semibold text-gray-900 group-hover:text-[#1e3a8a]">Exportar Reportes</h4>
-                <p className="text-xs text-gray-400 mt-1">Generar analíticas</p>
+              <button onClick={() => setActiveView('candidates')} className="w-full text-left p-4 rounded-lg border border-gray-100 hover:border-[#1e3a8a]/20 hover:bg-blue-50/30 transition-all group">
+                <h4 className="font-semibold text-gray-900 group-hover:text-[#1e3a8a]">Buscar Candidatos con IA</h4>
+                <p className="text-xs text-gray-400 mt-1">Los mejores perfiles por vacante</p>
               </button>
             </CardContent>
           </Card>
@@ -576,6 +635,126 @@ export default function CompanyDashboard() {
       </div>
     </div>
   )
+
+  const renderApplicants = () => {
+    const pending = applicants.filter(a => a.company_liked == null)
+    const accepted = applicants.filter(a => a.company_liked === true)
+    const rejected = applicants.filter(a => a.company_liked === false)
+
+    const applicantCard = (applicant: any, showActions: boolean) => (
+      <Card key={applicant.match_id} className="bg-white border-gray-100 shadow-sm rounded-xl">
+        <CardContent className="p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4 min-w-0">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 text-white font-bold text-lg" style={{ background: 'linear-gradient(135deg, #1E3A8A 0%, #6366F1 100%)' }}>
+                {(applicant.student_name || 'E').charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-semibold text-gray-900 truncate">{applicant.student_name || `Estudiante #${applicant.student_id}`}</h4>
+                <p className="text-sm text-gray-500 truncate">{applicant.career || 'Carrera no registrada'} · {applicant.university || 'Universidad'}</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Postuló a: <span className="font-medium text-[#1e3a8a]">{applicant.job_title}</span>
+                </p>
+                {applicant.student_email && (
+                  <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                    <Mail className="w-3 h-3" /> {applicant.student_email}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col items-end gap-2 shrink-0">
+              {applicant.score != null && applicant.score > 0 && (
+                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                  applicant.score >= 0.7 ? 'bg-green-50 text-green-600' :
+                  applicant.score >= 0.5 ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-500'
+                }`}>
+                  {Math.round(applicant.score * 100)}% afinidad
+                </span>
+              )}
+              {applicant.cv_url && (
+                <a
+                  href={`${API_BASE_URL.replace('/api', '')}${applicant.cv_url}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs text-[#1e3a8a] hover:underline font-semibold"
+                >
+                  <Download className="w-3.5 h-3.5" /> Ver CV
+                </a>
+              )}
+            </div>
+          </div>
+
+          {showActions && (
+            <div className="flex items-center gap-3 mt-5 pt-4 border-t border-gray-50">
+              <Button
+                variant="outline"
+                onClick={() => handleApplicantDecision(applicant, false)}
+                className="flex-1 border-gray-200 text-gray-500 hover:border-red-200 hover:text-red-500 hover:bg-red-50 rounded-lg gap-2"
+              >
+                <XCircle className="w-4 h-4" />
+                Descartar
+              </Button>
+              <Button
+                onClick={() => handleApplicantDecision(applicant, true)}
+                className="flex-1 bg-[#1e3a8a] hover:bg-[#1e3a8a]/90 text-white rounded-lg gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Aceptar (Match)
+              </Button>
+            </div>
+          )}
+          {!showActions && applicant.company_liked === true && (
+            <div className="mt-4 pt-3 border-t border-gray-50">
+              <span className="text-xs font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full">✓ Match — contacto habilitado</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    )
+
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Postulantes</h1>
+          <p className="text-gray-500 mt-1">Estudiantes que hicieron swipe a tus vacantes. Acepta para generar el match o descarta para notificarles.</p>
+        </div>
+
+        <div>
+          <h3 className="text-lg font-bold text-gray-900 mb-4">Por revisar ({pending.length})</h3>
+          {pending.length > 0 ? (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {pending.map(a => applicantCard(a, true))}
+            </div>
+          ) : (
+            <Card className="bg-white border-gray-100 rounded-xl">
+              <CardContent className="p-8 text-center text-gray-500">
+                No hay postulantes pendientes. Cuando un estudiante haga swipe a tus ofertas aparecerá aquí.
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {accepted.length > 0 && (
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Aceptados — Matches ({accepted.length})</h3>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {accepted.map(a => applicantCard(a, false))}
+            </div>
+          </div>
+        )}
+
+        {rejected.length > 0 && (
+          <div>
+            <h3 className="text-lg font-bold text-gray-400 mb-4">Descartados ({rejected.length})</h3>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 opacity-60">
+              {rejected.map(a => applicantCard(a, false))}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   const renderPostOffer = () => {
     if (postStep === 4) {
@@ -1457,6 +1636,7 @@ export default function CompanyDashboard() {
             transition={{ duration: 0.2 }}
           >
             {activeView === 'dashboard' && renderDashboard()}
+            {activeView === 'applicants' && renderApplicants()}
             {activeView === 'post-offer' && renderPostOffer()}
             {activeView === 'candidates' && renderCandidates()}
             {activeView === 'company-profile' && renderCompanyProfile()}

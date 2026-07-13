@@ -8,7 +8,7 @@ export default function BottomNavigation({ activePage }: BottomNavigationProps) 
   const [_, setLocation] = useLocation();
   
   return (
-    <div className="border-t border-gray-200 flex justify-around items-center py-3 px-2 bg-white relative z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+    <div className="border-t border-gray-200 dark:border-gray-800 flex justify-around items-center py-3 px-2 bg-white dark:bg-gray-900 relative z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
       <button 
         className={`flex flex-col items-center justify-center w-20 ${activePage === "inicio" ? "text-[#2e3192]" : "text-gray-400 hover:text-gray-600"}`}
         onClick={() => setLocation("/matching")}

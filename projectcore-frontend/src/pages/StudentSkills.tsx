@@ -52,21 +52,21 @@ export default function StudentSkills() {
   return (
     <StudentAppLayout activePage="perfil">
       {/* Header */}
-      <div className="py-4 px-6 flex items-center bg-white sticky top-0 z-20 border-b border-gray-50">
+      <div className="py-4 px-6 flex items-center bg-white dark:bg-gray-900 sticky top-0 z-20 border-b border-gray-50 dark:border-gray-800">
         <button 
           onClick={() => setLocation('/student-profile')}
-          className="mr-4 text-gray-500 hover:text-gray-900"
+          className="mr-4 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
-        <h1 className="text-xl font-bold text-[#1e293b]">Mis Habilidades</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">Mis Habilidades</h1>
       </div>
 
-      <div className="p-4 space-y-4 pb-24 bg-gray-50 min-h-screen">
+      <div className="p-4 space-y-4 pb-24 bg-gray-50 dark:bg-gray-950 min-h-screen">
         
         {/* Agregar Nueva Habilidad Card */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <h2 className="text-[17px] font-medium text-[#1e293b] mb-4">Agregar Nueva Habilidad</h2>
+        <div className="bg-white dark:bg-gray-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-800">
+          <h2 className="text-[17px] font-medium text-gray-900 dark:text-white mb-4">Agregar Nueva Habilidad</h2>
           <input 
             type="text" 
             placeholder="Ej: React, Python, Excel..."
@@ -74,16 +74,16 @@ export default function StudentSkills() {
             onChange={(e) => setNewSkill(e.target.value)}
             onKeyDown={handleAddSkill}
             disabled={addSkillMutation.isPending}
-            className="w-full text-gray-900 text-[15px] p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1e2f75] bg-transparent"
+            className="w-full text-gray-900 dark:text-white text-[15px] p-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:border-[#6366F1] bg-transparent"
           />
           {addSkillMutation.isPending && (
-            <p className="text-sm text-gray-500 mt-2">Agregando...</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Agregando...</p>
           )}
         </div>
 
         {/* Tus Habilidades Card */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <h2 className="text-[17px] font-medium text-[#1e293b] mb-4">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-800">
+          <h2 className="text-[17px] font-medium text-gray-900 dark:text-white mb-4">
             Tus Habilidades ({skills.length})
           </h2>
           
@@ -96,7 +96,7 @@ export default function StudentSkills() {
               {skills.map((skill: any) => (
                 <div 
                   key={skill.skill_id} 
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#f3f0ff] text-[#2e3192] rounded-full text-[15px] font-medium"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-50 dark:bg-indigo-950 text-[#1E3A8A] dark:text-indigo-300 rounded-full text-[15px] font-medium"
                 >
                   {skill.skill_name || `Habilidad ${skill.skill_id}`}
                   <button 
@@ -109,7 +109,7 @@ export default function StudentSkills() {
                 </div>
               ))}
               {skills.length === 0 && (
-                <p className="text-sm text-gray-500 w-full text-center py-2">No tienes habilidades registradas aún.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 w-full text-center py-2">No tienes habilidades registradas aún.</p>
               )}
             </div>
           )}
@@ -117,7 +117,7 @@ export default function StudentSkills() {
 
         <button 
           onClick={() => setLocation('/student-profile')}
-          className="w-full py-4 bg-[#1e2f75] hover:bg-[#15225a] text-white rounded-xl font-bold shadow-lg shadow-blue-900/20 transition-all duration-300 mt-6"
+          className="w-full py-4 bg-[#1E3A8A] hover:bg-[#27479E] text-white rounded-xl font-bold shadow-lg shadow-blue-900/20 transition-all duration-300 mt-6"
         >
           Guardar Cambios
         </button>

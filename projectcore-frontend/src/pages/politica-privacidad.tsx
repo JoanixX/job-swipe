@@ -40,7 +40,7 @@ export default function PoliticaPrivacidad() {
           <Button
             variant="ghost"
             className="text-white hover:bg-white/10"
-            onClick={() => setLocation('/chambea-ya')}
+            onClick={() => setLocation('/')}
           >
             🏠 Volver al Inicio
           </Button>

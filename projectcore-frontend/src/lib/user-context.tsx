@@ -84,8 +84,6 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         if (data.skills) updateData.skills = data.skills
         if (data.interests) updateData.interests = data.interests
         
-        console.log('Updating profile with data:', updateData)
-        console.log('Student ID:', user.profileData?.related_id)
         
         const response = await fetch(`/api/student/${user.profileData?.related_id}`, {
           method: 'PUT',
@@ -96,7 +94,6 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         })
 
         if (response.ok) {
-          console.log('Profile updated successfully in backend')
           
           // Update local state only after successful backend update
           const updatedUser = {

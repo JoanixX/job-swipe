@@ -223,7 +223,14 @@ export default function RegisterStudent() {
     password: '',
     confirmPassword: '',
     career: '',
-    academic_cycle: ''
+    academic_cycle: 0,
+    date_of_birth: '',
+    experience_id: 1,
+    location: '',
+    weekly_availability: 0,
+    preferred_modality: 0,
+    main_motivation: '',
+    description: ''
   })
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [registrationSuccess, setRegistrationSuccess] = useState(false)
@@ -357,7 +364,6 @@ export default function RegisterStudent() {
         description: formData.description
       }
       
-      console.log('Paso 1: Registrando estudiante...', studentPayload)
       
       const studentResponse = await fetch(`${API_BASE_URL}/register/student`, {
         method: 'POST',
@@ -384,7 +390,6 @@ export default function RegisterStudent() {
       }
       
       const studentData = await studentResponse.json()
-      console.log('Estudiante registrado exitosamente:', studentData)
       
       // PASO 2: Registrar el usuario para login
       const userPayload = {
@@ -395,7 +400,6 @@ export default function RegisterStudent() {
         dni: formData.dni || "00000000" // Using DNI field for students
       }
       
-      console.log('Paso 2: Registrando usuario para login...', { ...userPayload, password: '[HIDDEN]' })
       
       const userResponse = await fetch(`${API_BASE_URL}/register/user`, {
         method: 'POST',
@@ -417,7 +421,6 @@ export default function RegisterStudent() {
       }
       
       const userData = await userResponse.json()
-      console.log('Usuario registrado exitosamente:', userData)
       
       // Guardar datos de sesión
       localStorage.setItem('token', userData.access_token || 'temp_token')
@@ -453,7 +456,7 @@ export default function RegisterStudent() {
       
       // Redirect to dashboard after 3 seconds
       setTimeout(() => {
-        setLocation('/student-dashboard')
+        setLocation('/student-profile')
       }, 3000)
       
     } catch (error) {
@@ -902,7 +905,7 @@ export default function RegisterStudent() {
                   <div className="flex justify-between pt-4 sm:pt-6">
                     <Button
                       variant="outline"
-                      onClick={currentStep === 1 ? () => setLocation('/register') : prevStep}
+                      onClick={currentStep === 1 ? () => setLocation('/register-selection') : prevStep}
                       className="border-[#FF258D] text-[#FF258D] hover:bg-[#FF258D] hover:text-white text-sm sm:text-base"
                     >
                       <FaArrowLeft className="mr-2" /> Volver

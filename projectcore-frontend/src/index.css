@@ -30,6 +30,21 @@
   animation-delay: 4s;
 }
 
+/* Gradiente de marca JobSwipe: botones primarios (Soy Estudiante, Regístrate gratis) */
+.btn-brand-gradient {
+  background: linear-gradient(90deg, #1E3A8A 0%, #233D91 7.14%, #284098 14.29%, #2D439F 21.43%, #3246A6 28.57%, #3749AE 35.71%, #3C4CB5 42.86%, #4150BC 50%, #4653C4 57.14%, #4B56CB 64.29%, #4F59D3 71.43%, #545CDA 78.57%, #5960E2 85.71%, #5E63E9 92.86%, #6366F1 100%);
+}
+
+.btn-brand-gradient:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 6px 20px rgba(30, 58, 138, 0.35);
+}
+
+/* Fondo de las páginas de autenticación (diseño de Figma) */
+.auth-gradient {
+  background: linear-gradient(135deg, #1E3A8A 0%, #6366F1 100%);
+}
+
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;

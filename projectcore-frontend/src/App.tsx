@@ -6,8 +6,6 @@ import RegisterStudent from './pages/RegisterStudent'
 import SimpleRegisterStudent from './pages/SimpleRegisterStudent'
 import StudentCVUpload from './pages/StudentCVUpload'
 import RegisterCompany from './pages/RegisterCompany'
-import InnovativeRegister from './pages/InnovativeRegister'
-import CompanySubscriptionRegister from './pages/CompanySubscriptionRegister'
 import StudentProfile from './pages/StudentProfile'
 import AccountSettings from './pages/AccountSettings'
 import StudentSkills from './pages/StudentSkills'
@@ -20,6 +18,8 @@ import Login from './pages/Login'
 import PoliticaPrivacidad from './pages/politica-privacidad'
 import TerminosServicio from './pages/terminos-servicio'
 import PasswordRecovery from './pages/PasswordRecovery'
+import ResetPassword from './pages/ResetPassword'
+import NotFound from './pages/not-found'
 
 function App() {
   return (
@@ -43,6 +43,8 @@ function App() {
           <Route path="/politica-privacidad" component={PoliticaPrivacidad} />
           <Route path="/terminos-servicio" component={TerminosServicio} />
           <Route path="/recover-password" component={PasswordRecovery} />
+          <Route path="/reset-password" component={ResetPassword} />
+          <Route component={NotFound} />
         </Switch>
       </div>
     </UserProvider>

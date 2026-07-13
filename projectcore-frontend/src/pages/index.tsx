@@ -9,7 +9,7 @@ const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-[#F3F4F6]/95 backdrop-blur-md border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           <div className="flex items-center">
@@ -27,8 +27,8 @@ const Navigation = () => {
                   Iniciar Sesión
                 </a>
               </Link>
-              <Link href="/simple-register-student">
-                <a className="bg-[#4F6CDB] text-white px-6 py-2.5 rounded-xl font-medium hover:bg-[#4F6CDB]/90 transition-colors">
+              <Link href="/register-selection">
+                <a className="btn-brand-gradient text-white px-6 py-2.5 rounded-xl font-medium transition-all">
                   Regístrate gratis
                 </a>
               </Link>
@@ -54,8 +54,8 @@ const Navigation = () => {
               <Link href="/login">
                 <a className="text-[#4F6CDB] font-semibold border border-[#4F6CDB] rounded-xl py-2 text-center">Iniciar Sesión</a>
               </Link>
-              <Link href="/simple-register-student">
-                <a className="bg-[#4F6CDB] text-white px-6 py-2.5 rounded-xl font-medium text-center">Regístrate gratis</a>
+              <Link href="/register-selection">
+                <a className="btn-brand-gradient text-white px-6 py-2.5 rounded-xl font-medium text-center">Regístrate gratis</a>
               </Link>
             </div>
           </div>
@@ -68,7 +68,7 @@ const Navigation = () => {
 // Phone Mockup Component for Hero
 const PhoneMockup = () => {
   return (
-    <div className="relative w-[320px] h-[640px] mx-auto md:ml-auto perspective-1000">
+    <div className="relative w-[320px] h-[640px] mx-auto md:ml-auto" style={{ transform: 'rotate(3deg)' }}>
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -76,7 +76,7 @@ const PhoneMockup = () => {
         className="w-full h-full bg-[#1E3A8A] rounded-[40px] p-3 shadow-2xl border-8 border-[#1E3A8A] relative overflow-hidden"
       >
         <div className="bg-white w-full h-full rounded-[32px] overflow-hidden flex flex-col relative">
-          
+
           {/* Status Bar */}
           <div className="h-12 bg-[#1E3A8A] w-full flex justify-between items-center px-6 text-white text-xs font-medium">
             <span>9:41</span>
@@ -85,48 +85,49 @@ const PhoneMockup = () => {
 
           {/* App Header */}
           <div className="text-center py-4 text-[#1E3A8A] font-bold text-lg">
-            InternMatch
+            JobSwipe
           </div>
 
           {/* Tinder Card */}
-          <motion.div 
-            className="flex-1 mx-4 mb-4 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden flex flex-col"
+          <motion.div
+            className="mx-4 mb-24 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden flex flex-col"
             initial={{ rotate: -5, scale: 0.95 }}
             animate={{ rotate: 0, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.5 }}
           >
-            <div className="h-1/2 bg-[#4F6CDB] flex items-center justify-center">
-              <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                <Briefcase className="w-10 h-10 text-white" />
+            <div className="h-36 rounded-2xl m-2 flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #4F46E5 0%, #6366F1 60%, #7C7FF5 100%)' }}>
+              <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                <Briefcase className="w-8 h-8 text-white" />
               </div>
             </div>
-            <div className="p-5">
-              <h3 className="font-bold text-xl text-gray-900 mb-1">Desarrollador Frontend Jr.</h3>
-              <p className="text-sm text-gray-500 mb-4">Google · Miraflores, Lima</p>
+            <div className="px-4 pt-2 pb-3">
+              <h3 className="font-bold text-lg text-gray-900 mb-0.5">Desarrollador Frontend Jr.</h3>
+              <p className="text-sm text-gray-500 mb-3">Google · Miraflores, Lima</p>
               <div className="flex gap-2 flex-wrap">
-                <span className="px-3 py-1 bg-blue-50 text-blue-600 text-xs rounded-full font-medium">React</span>
-                <span className="px-3 py-1 bg-blue-50 text-blue-600 text-xs rounded-full font-medium">TypeScript</span>
-                <span className="px-3 py-1 bg-blue-50 text-blue-600 text-xs rounded-full font-medium">Tailwind</span>
+                <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-600 text-xs rounded-md font-medium">React</span>
+                <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-600 text-xs rounded-md font-medium">TypeScript</span>
+                <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-600 text-xs rounded-md font-medium">Tailwind</span>
               </div>
+            </div>
+
+            {/* Action Buttons dentro de la tarjeta */}
+            <div className="flex justify-center items-center gap-3 px-4 pb-4">
+              <button className="flex-1 h-11 bg-white border border-red-200 rounded-full flex items-center justify-center text-red-400 shadow-sm">
+                <X className="w-5 h-5" />
+              </button>
+              <button className="flex-1 h-11 rounded-full flex items-center justify-center text-white shadow-md" style={{ background: 'linear-gradient(90deg, #1E3A8A 0%, #6366F1 100%)' }}>
+                <Heart className="w-5 h-5 fill-current" />
+              </button>
             </div>
           </motion.div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-center gap-6 pb-6 pt-2">
-            <button className="w-14 h-14 bg-white border border-gray-200 rounded-full flex items-center justify-center text-red-400 shadow-sm">
-              <X className="w-6 h-6" />
-            </button>
-            <button className="w-24 h-14 bg-[#4F6CDB] rounded-full flex items-center justify-center text-white shadow-md">
-              <Heart className="w-6 h-6 fill-current" />
-            </button>
-          </div>
-
           {/* Match Toast Notification */}
-          <motion.div 
+          <motion.div
             initial={{ y: 100 }}
             animate={{ y: 0 }}
             transition={{ delay: 1.5, type: "spring", stiffness: 200 }}
-            className="absolute bottom-4 left-4 right-4 bg-gradient-to-r from-[#4F6CDB] to-[#6b85e6] p-4 rounded-2xl flex items-center gap-3 text-white shadow-lg"
+            className="absolute bottom-4 left-4 right-4 p-4 rounded-2xl flex items-center gap-3 text-white shadow-lg"
+            style={{ background: 'linear-gradient(90deg, #1E3A8A 0%, #3C4CB5 60%, #6366F1 100%)' }}
           >
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center shrink-0">
               <Heart className="w-5 h-5 fill-current text-white" />
@@ -175,7 +176,7 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-4 mb-4">
               <button 
                 onClick={() => setLocation('/login?type=student')}
-                className="flex items-center justify-center gap-2 bg-[#4F6CDB] hover:bg-[#3b57c9] text-white px-8 py-4 rounded-2xl font-bold text-lg transition-colors"
+                className="btn-brand-gradient flex items-center justify-center gap-2 text-white px-8 py-4 rounded-2xl font-bold text-lg transition-all"
               >
                 <GraduationCap className="w-5 h-5" />
                 Soy Estudiante
@@ -451,7 +452,7 @@ export default function Home() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
             <div className="col-span-2">
               <div className="flex items-center gap-2 mb-4">
-                <Logo size="md" />
+                <Logo size="md" variant="light" />
               </div>
               <p className="text-white/60 max-w-sm">
                 Conectando el talento universitario con las empresas del futuro mediante Inteligencia Artificial.

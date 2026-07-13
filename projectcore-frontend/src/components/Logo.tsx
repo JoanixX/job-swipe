@@ -2,42 +2,36 @@ import React from 'react';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
-  color?: string;
+  /** 'dark' para fondos claros (texto #1E3A8A), 'light' para fondos oscuros (texto blanco) */
+  variant?: 'dark' | 'light';
   showText?: boolean;
 }
 
-export default function Logo({ size = 'md', color = '#8A4EFC', showText = true }: LogoProps) {
+export default function Logo({ size = 'md', variant = 'dark', showText = true }: LogoProps) {
   const sizes = {
-    sm: { width: 32, height: 32 },
-    md: { width: 45, height: 45 },
-    lg: { width: 65, height: 65 },
-    xl: { width: 80, height: 80 }
+    sm: { width: 32, height: 27 },
+    md: { width: 45, height: 38 },
+    lg: { width: 65, height: 54 },
+    xl: { width: 80, height: 67 }
   };
 
   const { width, height } = sizes[size];
+  const textSize = size === 'sm' ? 'text-xl' : size === 'md' ? 'text-2xl' : size === 'lg' ? 'text-3xl' : 'text-4xl';
+  // En modo oscuro el azul marino no contrasta: el texto pasa a blanco automáticamente
+  const textColor = variant === 'light' ? 'text-white' : 'text-[#1E3A8A] dark:text-white';
 
   return (
     <div className="flex items-center gap-2">
-      <div className="relative">
-        <img
-          src="/images/logoCircular.png"
-          alt="JobSwipe Logo"
-          width={width}
-          height={height}
-          className="animate-pulse rounded-full"
-          style={{ animationDuration: '3s' }}
-        />
-        <div className="absolute -top-1 -right-1 w-5 h-5 bg-yellow-400 rounded-full animate-bounce" style={{ animationDuration: '1.5s' }}></div>
-      </div>
+      <img
+        src="/images/JobSwipe.svg"
+        alt="Logo de JobSwipe"
+        width={width}
+        height={height}
+      />
       {showText && (
-        <div className="flex items-center">
-          <span className={`font-extrabold ${size === 'sm' ? 'text-xl' : size === 'md' ? 'text-2xl' : size === 'lg' ? 'text-3xl' : 'text-4xl'} text-white`}>
-            Job
-          </span>
-          <span className={`font-extrabold ${size === 'sm' ? 'text-xl' : size === 'md' ? 'text-2xl' : size === 'lg' ? 'text-3xl' : 'text-4xl'} text-[#FF655B]`}>
-            Swipe
-          </span>
-        </div>
+        <span className={`font-extrabold ${textSize} ${textColor}`}>
+          JobSwipe
+        </span>
       )}
     </div>
   );
