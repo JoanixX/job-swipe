@@ -25,6 +25,7 @@ from app.adapters.output.orm.models.job_offer_area_model import *
 from app.adapters.output.orm.models.job_offer_model import *
 from app.adapters.output.orm.models.job_offer_required_skill_model import *
 from app.adapters.output.orm.models.match_job_student_model import *
+from app.adapters.output.orm.models.password_reset_token_model import *
 from app.adapters.output.orm.models.skill_model import *
 from app.adapters.output.orm.models.student_interest_model import *
 from app.adapters.output.orm.models.student_model import *

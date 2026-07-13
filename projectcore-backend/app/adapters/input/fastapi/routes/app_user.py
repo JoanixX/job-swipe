@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.input.fastapi.schemas.app_user_schema import (AppUserCreate, AppUserResponse, AppUserUpdate,
-                                                                LoginCreate, UpdatePasswordCreate, )
+                                                                LoginCreate, RecoverPasswordCreate,
+                                                                ResetPasswordCreate, UpdatePasswordCreate, )
 from app.application.factories.app_user_factory import AppUserUseCaseFactory
 from app.infraestructure.database.connection import get_session
 
@@ -98,6 +99,36 @@ async def update_password(user_id: int, payload: UpdatePasswordCreate, session: 
 
     except Exception as error:
         logger.error("Error al actualizar contraseña", exc_info=True, )
+        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {error}", ) from error
+
+
+@router.post("/recover-password", response_model=dict, tags=["App User"], )
+async def recover_password(payload: RecoverPasswordCreate, session: AsyncSession = Depends(get_session), ):
+    try:
+        use_case = AppUserUseCaseFactory(session).build()
+
+        return await use_case.recover_password(payload.email)
+
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error), ) from error
+
+    except Exception as error:
+        logger.error("Error al solicitar recuperación de contraseña", exc_info=True, )
+        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {error}", ) from error
+
+
+@router.post("/reset-password", response_model=dict, tags=["App User"], )
+async def reset_password(payload: ResetPasswordCreate, session: AsyncSession = Depends(get_session), ):
+    try:
+        use_case = AppUserUseCaseFactory(session).build()
+
+        return await use_case.reset_password(payload.token, payload.new_password, )
+
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error), ) from error
+
+    except Exception as error:
+        logger.error("Error al restablecer contraseña", exc_info=True, )
         raise HTTPException(status_code=500, detail=f"Error interno del servidor: {error}", ) from error
 
 

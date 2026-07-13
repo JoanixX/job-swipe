@@ -58,13 +58,16 @@ export const getQueryFn: <T>(options: {
     }
   };
 
+// Config orientada a "tiempo real": los datos caducan rápido y se refrescan al
+// volver a la página o a la ventana, así los cambios (swipes, matches) se ven al instante.
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
+      refetchOnWindowFocus: true,
+      refetchOnMount: "always",
+      staleTime: 10_000,
       retry: false,
     },
     mutations: {

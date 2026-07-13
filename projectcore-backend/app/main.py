@@ -1,6 +1,9 @@
+from pathlib import Path
+
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 load_dotenv()
 
@@ -14,6 +17,7 @@ from app.adapters.input.fastapi.routes.chat_history import router as chat_histor
 from app.adapters.input.fastapi.routes.company_area import router as company_area_router
 from app.adapters.input.fastapi.routes.company import router as company_router
 from app.adapters.input.fastapi.routes.experience_detail import router as experience_detail_router
+from app.adapters.input.fastapi.routes.file_upload import router as file_upload_router
 from app.adapters.input.fastapi.routes.external_link import router as external_link_router
 from app.adapters.input.fastapi.routes.interest import router as interest_router
 from app.adapters.input.fastapi.routes.job_offer_area import router as job_offer_area_router
@@ -62,6 +66,7 @@ app.include_router(chat_history_router, prefix="/api")
 app.include_router(company_area_router, prefix="/api")
 app.include_router(company_router, prefix= "/api")
 app.include_router(experience_detail_router, prefix="/api")
+app.include_router(file_upload_router, prefix="/api")
 app.include_router(external_link_router, prefix="/api")
 app.include_router(filter_match_router, prefix="/api")
 app.include_router(interest_router, prefix="/api")
@@ -80,6 +85,7 @@ app.include_router(swipe_router, prefix="/api")
 # Condiguración de CORS local
 origins = [
     "http://localhost:5000",
+    "http://localhost:5173",
     "http://localhost:8000",
     "http://localhost:8001",
     "http://localhost:8500"
@@ -100,6 +106,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Archivos subidos (CVs en PDF) servidos como estáticos
+Path("uploads/cv").mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 
 @app.get("/")
 def read_root():

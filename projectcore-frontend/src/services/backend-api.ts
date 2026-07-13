@@ -1,7 +1,6 @@
 // Backend API service for ProjectCore platform
-export const API_BASE_URL = import.meta.env.PROD 
-  ? 'http://localhost:8000/api'
-  : '/api';
+// VITE_API_URL permite apuntar a un backend desplegado; sin ella se usa el proxy /api de Vite
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // User registration and authentication types
 export interface UserRegistration {
@@ -170,6 +169,14 @@ export const swipeAPI = {
   },
   getCompanyMatches: async (companyId: number): Promise<any[]> => {
     return apiRequest(`/matches/company/${companyId}`);
+  },
+  // Historial de postulaciones del estudiante (swipes derecha) con estado
+  getStudentApplications: async (studentId: number): Promise<any[]> => {
+    return apiRequest(`/swipes/student/${studentId}`);
+  },
+  // Postulantes que dieron like a ofertas de la empresa
+  getCompanyApplicants: async (companyId: number): Promise<any[]> => {
+    return apiRequest(`/company/${companyId}/applicants`);
   }
 };
 
@@ -367,7 +374,7 @@ export const catalogAPI = {
 
   getAllExperienceDetails: async (): Promise<ExperienceDetailResponse[]> => {
     return apiRequest('/experience_detail/all', {
-      method: 'POST'
+      method: 'GET'
     });
   },
 

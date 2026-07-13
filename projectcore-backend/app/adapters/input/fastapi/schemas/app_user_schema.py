@@ -210,6 +210,29 @@ class UpdatePasswordCreate(BaseModel):
         return value
 
 
+class RecoverPasswordCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    email: EmailStr
+
+
+class ResetPasswordCreate(BaseModel):
+    token: str = Field(..., min_length=16, max_length=128, )
+
+    new_password: str = Field(..., min_length=8, max_length=128, )
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("La nueva contraseña no puede estar vacía")
+
+        if len(value) < 8:
+            raise ValueError("La nueva contraseña debe tener al menos 8 caracteres")
+
+        return value
+
+
 class AppUserUpdate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 

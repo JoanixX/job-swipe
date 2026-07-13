@@ -22,4 +22,4 @@ app.include_router(extract_skills.router, prefix="/api/extract_skills")
 
 @app.get("/")
 async def root():
-    return {"message": "API de ChambeaYA"}
+    return {"message": "API de JobSwipe"}

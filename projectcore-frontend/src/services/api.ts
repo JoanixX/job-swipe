@@ -1,5 +1,6 @@
 // API service for connecting to the ProjectCore backend
-const API_BASE_URL = 'http://localhost:8001/api'; // ProjectCore_code-s5 backend URL
+// Servicio IA (kawsai): extracción de skills desde CV. Configurable por entorno.
+const API_BASE_URL = import.meta.env.VITE_IA_API_URL || 'http://localhost:8001/api';
 
 export interface JobOfferCreate {
   company_id: number;

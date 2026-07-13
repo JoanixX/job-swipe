@@ -47,7 +47,7 @@ export interface RegistrationData {
 }
 
 class UserRegistrationService {
-  private baseUrl = (typeof window !== 'undefined' && (window as any).env?.REACT_APP_API_URL) || 'http://localhost:8000';
+  private baseUrl = import.meta.env.VITE_API_ORIGIN || 'http://localhost:8000';
 
   // Generate unique registration URL for a user
   async generateRegistrationLink(userData: Partial<UserRegistrationTemplate>): Promise<string> {

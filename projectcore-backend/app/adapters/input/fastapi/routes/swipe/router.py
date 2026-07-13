@@ -57,9 +57,11 @@ async def student_swipe(request: StudentSwipeRequest, session: AsyncSession = De
 
     match = await get_match(session, request.student_id, request.job_offer_id, )
 
+    # Si la IA aún no precalculó el match, se crea el registro con el swipe del estudiante
     if match is None:
-        raise HTTPException(status_code=404, detail=("No existe un match activo entre el estudiante "
-                                                     "y la oferta"), )
+        match = MatchJobStudentModel(student_id=request.student_id, job_offer_id=request.job_offer_id, score=0,
+                                     match_date=datetime.utcnow(), rank=0, )
+        session.add(match)
 
     match.student_liked = request.liked
     match.updated_at = datetime.utcnow()
@@ -116,6 +118,78 @@ async def company_swipe(request: CompanySwipeRequest, session: AsyncSession = De
     mutual_match = bool(match.student_liked and match.company_liked)
 
     return SwipeResponse(message="Swipe de la compañía registrado correctamente", mutual_match=mutual_match, )
+
+
+def _application_status(match: MatchJobStudentModel) -> str:
+    if match.student_liked is False:
+        return "descartada"
+    if match.company_liked is True:
+        return "aceptado"
+    if match.company_liked is False:
+        return "rechazado"
+    return "pendiente"
+
+
+@router.get("/swipes/student/{student_id}", response_model=list[dict], tags=["Swipe"], )
+async def get_student_swipes(student_id: int, session: AsyncSession = Depends(get_session), ):
+    """Historial de postulaciones del estudiante (swipes a la derecha) con su estado actual."""
+    student = await get_active_student(session, student_id)
+
+    if student is None:
+        raise HTTPException(status_code=404, detail="El estudiante no existe o está eliminado", )
+
+    statement = (select(MatchJobStudentModel, JobOfferModel, CompanyModel, )
+                 .join(JobOfferModel, MatchJobStudentModel.job_offer_id == JobOfferModel.id, )
+                 .join(CompanyModel, JobOfferModel.company_id == CompanyModel.id, )
+                 .where(MatchJobStudentModel.student_id == student_id,
+                        MatchJobStudentModel.student_liked.is_(True),
+                        MatchJobStudentModel.deleted_at.is_(None),
+                        JobOfferModel.deleted_at.is_(None), )
+                 .order_by(MatchJobStudentModel.updated_at.desc()))
+
+    result = await session.execute(statement)
+    rows = result.all()
+
+    return [{"match_id": match.id, "job_offer_id": offer.id, "title": offer.title,
+             "company_name": company.name, "location": offer.location,
+             "status": _application_status(match), "applied_at": match.updated_at,
+             "score": float(match.score) if match.score is not None else None, } for match, offer, company in rows]
+
+
+@router.get("/company/{company_id}/applicants", response_model=list[dict], tags=["Swipe", "Company"], )
+async def get_company_applicants(company_id: int, session: AsyncSession = Depends(get_session), ):
+    """Postulantes que dieron swipe derecha a ofertas de la empresa, con su estado."""
+    company = await get_active_company(session, company_id)
+
+    if company is None:
+        raise HTTPException(status_code=404, detail="La compañía no existe o está eliminada", )
+
+    from app.adapters.output.orm.models.app_user_model import AppUserModel
+
+    statement = (select(MatchJobStudentModel, JobOfferModel, StudentModel, AppUserModel, )
+                 .join(JobOfferModel, MatchJobStudentModel.job_offer_id == JobOfferModel.id, )
+                 .join(StudentModel, MatchJobStudentModel.student_id == StudentModel.id, )
+                 .outerjoin(AppUserModel, (AppUserModel.related_id == StudentModel.id)
+                            & (AppUserModel.role == 'student') & (AppUserModel.deleted_at.is_(None)), )
+                 .where(JobOfferModel.company_id == company_id,
+                        MatchJobStudentModel.student_liked.is_(True),
+                        MatchJobStudentModel.deleted_at.is_(None),
+                        JobOfferModel.deleted_at.is_(None),
+                        StudentModel.deleted_at.is_(None), )
+                 .order_by(MatchJobStudentModel.updated_at.desc()))
+
+    result = await session.execute(statement)
+    rows = result.all()
+
+    return [{"match_id": match.id, "job_offer_id": offer.id, "job_title": offer.title,
+             "student_id": student.id, "student_name": app_user.name if app_user else None,
+             "student_email": app_user.email if app_user else None,
+             "university": student.university, "career": student.career,
+             "cv_url": app_user.cv_url if app_user else None,
+             "score": float(match.score) if match.score is not None else None,
+             "company_liked": match.company_liked,
+             "status": _application_status(match), "applied_at": match.updated_at, }
+            for match, offer, student, app_user in rows]
 
 
 @router.get("/matches/student/{student_id}", response_model=list[dict], tags=["Swipe"], )
