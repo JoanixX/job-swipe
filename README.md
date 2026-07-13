@@ -27,7 +27,7 @@ Plataforma web para la gestión y evaluación de candidatos basada en inteligenc
 ## Estructura del Proyecto
 
 ```
-chambeaya_candidate_ranking_platform/
+job-swipe/
 ├── frontend/             # Interfaz de usuario (React)
 ├── backend/              # API y lógica de negocio (FastAPI)
 └── README.md             # Documentación principal

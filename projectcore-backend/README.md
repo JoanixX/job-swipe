@@ -1,6 +1,6 @@
-# ChambeaYA - Rama Develop
+# JobSwipe - Rama Develop
 
-ChambeaYA es una plataforma diseñada para conectar estudiantes universitarios con empresas a través de retos y proyectos
+JobSwipe es una plataforma diseñada para conectar estudiantes universitarios con empresas a través de retos y proyectos
 reales, facilitando el desarrollo profesional y la colaboración entre ambos sectores. El sistema permite a las empresas
 registrar desafíos, y a los estudiantes postularse según sus intereses, habilidades y disponibilidad, generando matches
 inteligentes y acuerdos de colaboración.
@@ -9,7 +9,7 @@ inteligentes y acuerdos de colaboración.
 
 ## ¿De qué trata el proyecto?
 
-El objetivo principal de ChambeaYA es crear un ecosistema donde:
+El objetivo principal de JobSwipe es crear un ecosistema donde:
 
 - **Empresas** puedan publicar retos o proyectos reales, especificando sus necesidades, cultura y requerimientos.
 - **Estudiantes** puedan registrarse, detallar su perfil académico y profesional, y postularse a los retos que mejor se
@@ -25,7 +25,7 @@ funcionalidades y adaptaciones a diferentes contextos educativos y empresariales
 
 ## Arquitectura Hexagonal (Ports & Adapters)
 
-ChambeaYA está construido siguiendo el patrón de **arquitectura hexagonal** (también conocido como Ports & Adapters),
+JobSwipe está construido siguiendo el patrón de **arquitectura hexagonal** (también conocido como Ports & Adapters),
 que busca separar claramente la lógica de negocio del resto de la aplicación (infraestructura, frameworks, interfaces de
 usuario, etc.).
 
@@ -102,7 +102,7 @@ importantes.
 
 ## Créditos
 
-Desarrollado por el equipo ChambeaYA.
+Desarrollado por el equipo JobSwipe.
 
 ---
 

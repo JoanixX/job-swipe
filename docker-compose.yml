@@ -39,13 +39,21 @@ services:
       QDRANT_HOST: http://qdrant:6333
       SECRET_KEY: 09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7
       IA_API_BASE_URL: http://kawsai:8001
-      depends_on:
-        - db
-        - qdrant
-        - kawsai
-      working_dir: /app
-      volumes:
-        - ./projectcore-backend:/app:Z
+      # Correos de recuperación de contraseña (vacío = solo log en consola)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-JobSwipe <no-reply@jobswipe.com>}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      RESET_TOKEN_EXPIRE_MINUTES: ${RESET_TOKEN_EXPIRE_MINUTES:-30}
+    depends_on:
+      - db
+      - qdrant
+      - kawsai
+    working_dir: /app
+    volumes:
+      - ./projectcore-backend:/app:Z
 
 volumes:
   postgres_data:

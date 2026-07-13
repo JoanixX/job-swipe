@@ -5,7 +5,7 @@
 1. **Clona el repositorio**
 	```bash
 	git clone <URL_DEL_REPO>
-	cd chambeya-assistant
+	cd job-swipe
 	```
 
 2. **Crea el entorno virtual (venv)**

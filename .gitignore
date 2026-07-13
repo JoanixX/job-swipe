@@ -12,6 +12,7 @@ venv/
 # Entornos y dependencias
 venv/
 node_modules/
+documentacion-ia/
 
 # Builds y generados
 dist/

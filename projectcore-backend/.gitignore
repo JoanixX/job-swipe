@@ -1,0 +1,7 @@
+# Archivos subidos por usuarios (CVs)
+uploads/
+
+# Entorno
+.env
+__pycache__/
+*.pyc
